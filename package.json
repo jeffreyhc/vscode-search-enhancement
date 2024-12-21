@@ -16,7 +16,18 @@
       {
         "command": "search-enhancement.helloWorld",
         "title": "Hello World"
+      },
+      {
+        "command": "extension.searchFunctions",
+        "title": "Search Functions by Keywords"
       }
+    ],
+    "keybindings": [
+        {
+            "command": "extension.searchFunctions",
+            "key": "ctrl+shift+f",
+            "when": "editorTextFocus"
+        }
     ]
   },
   "scripts": {
