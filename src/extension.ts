@@ -11,32 +11,71 @@ export function activate(context: vscode.ExtensionContext) {
         }
         const keywords = input.trim().split(/\s+/);
 
-        // 獲取工作區路徑
-        const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (!workspaceFolders) {
-            vscode.window.showErrorMessage('請打開一個工作區');
-            return;
-        }
-        const rootPath = workspaceFolders[0].uri.fsPath;
+		// 獲取工作區路徑
+		const workspaceFolders = vscode.workspace.workspaceFolders;
+		if (!workspaceFolders) {
+			vscode.window.showErrorMessage('請打開一個工作區');
+			return;
+		}
 
-        // 搜尋並提取函式名稱
-        const functionNames = await getAllFunctionNames(rootPath);
+        // 獲取所有符號
+        const symbols = await vscode.commands.executeCommand<vscode.SymbolInformation[]>('vscode.executeWorkspaceSymbolProvider', '');
 
-        // 篩選符合關鍵字的函式
-        const matchedFunctions = functionNames.filter(name => {
-            return keywords.every(keyword => name.includes(keyword));
-        });
+		if (symbols && symbols.length > 0)
+		{
+			// 過濾函式符號
+			const functionSymbols = symbols.filter(symbol => {
+				return symbol.kind === vscode.SymbolKind.Function || symbol.kind === vscode.SymbolKind.Method;
+			});
 
-        // 顯示結果
-        if (matchedFunctions.length > 0) {
-            const selectedFunction = await vscode.window.showQuickPick(matchedFunctions, { placeHolder: '選擇一個函式' });
-            if (selectedFunction) {
-                // 定位到函式定義
-                locateFunctionDefinition(rootPath, selectedFunction);
-            }
-        } else {
-            vscode.window.showInformationMessage('未找到符合的函式');
-        }
+			// 根據關鍵字進行篩選
+			const matchedSymbols = functionSymbols.filter(symbol => {
+				return keywords.every(keyword => symbol.name.includes(keyword));
+			});
+
+			// 顯示結果
+			if (matchedSymbols.length > 0) {
+				const items = matchedSymbols.map(symbol => ({
+					label: symbol.name,
+					description: `${vscode.workspace.asRelativePath(symbol.location.uri.fsPath)}:${symbol.location.range.start.line + 1}`,
+					symbol: symbol
+				}));
+				const selectedItem = await vscode.window.showQuickPick(items, { placeHolder: '選擇一個函式' });
+				if (selectedItem) {
+					const { symbol } = selectedItem;
+					const doc = await vscode.workspace.openTextDocument(symbol.location.uri);
+					const editor = await vscode.window.showTextDocument(doc);
+					editor.selection = new vscode.Selection(symbol.location.range.start, symbol.location.range.start);
+					editor.revealRange(symbol.location.range);
+				}
+			} else {
+				vscode.window.showInformationMessage('未找到符合的函式');
+			}
+		}
+		else
+		{
+			vscode.window.showInformationMessage('未找到任何符号。请确保语言服务已启用并完成索引。啟用替代方案。');
+			const rootPath = workspaceFolders[0].uri.fsPath;
+
+			// 搜尋並提取函式名稱
+			const functionNames = await getAllFunctionNames(rootPath);
+
+			// 篩選符合關鍵字的函式
+			const matchedFunctions = functionNames.filter(name => {
+				return keywords.every(keyword => name.includes(keyword));
+			});
+
+			// 顯示結果
+			if (matchedFunctions.length > 0) {
+				const selectedFunction = await vscode.window.showQuickPick(matchedFunctions, { placeHolder: '選擇一個函式' });
+				if (selectedFunction) {
+					// 定位到函式定義
+					locateFunctionDefinition(rootPath, selectedFunction);
+				}
+			} else {
+				vscode.window.showInformationMessage('未找到符合的函式');
+			}
+		}
     });
 
     context.subscriptions.push(disposable);
