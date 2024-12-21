@@ -3,3 +3,10 @@ dist
 node_modules
 .vscode-test/
 *.vsix
+# VS Code files for those working on multiple tools
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
