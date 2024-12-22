@@ -19,13 +19,13 @@
       },
       {
         "command": "extension.searchFunctions",
-        "title": "Search Functions by Keywords"
+        "title": "Search Symbols by Keywords"
       }
     ],
     "keybindings": [
         {
             "command": "extension.searchFunctions",
-            "key": "ctrl+shift+f",
+            "key": "ctrl+alt+f",
             "when": "editorTextFocus"
         }
     ]
