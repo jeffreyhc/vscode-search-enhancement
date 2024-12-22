@@ -18,43 +18,42 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-        // 獲取所有符號
-        const symbols = await vscode.commands.executeCommand<vscode.SymbolInformation[]>('vscode.executeWorkspaceSymbolProvider', '');
+		// 每個 keyword 都向 symbol provider 查詢一次
+        let allSymbolSets: vscode.SymbolInformation[][] = [];
+        for (const kw of keywords) {
+            // 拿不到任何結果時，回傳空陣列即可
+            const result = await vscode.commands.executeCommand<vscode.SymbolInformation[]>('vscode.executeWorkspaceSymbolProvider', kw) || [];
+            //console.log("kw: ", kw);
+            //console.log(result);
+            allSymbolSets.push(result);
+        }
 
-		if (symbols && symbols.length > 0)
-		{
-			// 過濾函式符號
-			const functionSymbols = symbols.filter(symbol => {
-				return symbol.kind === vscode.SymbolKind.Function || symbol.kind === vscode.SymbolKind.Method;
-			});
+        // 取交集：只有同時出現在所有結果裡的符號才能保留
+        // 這邊要注意如何判斷「同一個符號」，我們可比對 (symbol.name, symbol.location.uri, symbol.location.range)
+        let intersectedSymbols = allSymbolSets[0];
+        for (let i = 1; i < allSymbolSets.length; i++) {
+            intersectedSymbols = intersectionOfSymbols(intersectedSymbols, allSymbolSets[i]);
+        }
 
-			// 根據關鍵字進行篩選
-			const matchedSymbols = functionSymbols.filter(symbol => {
-				return keywords.every(keyword => symbol.name.includes(keyword));
-			});
-
-			// 顯示結果
-			if (matchedSymbols.length > 0) {
-				const items = matchedSymbols.map(symbol => ({
-					label: symbol.name,
-					description: `${vscode.workspace.asRelativePath(symbol.location.uri.fsPath)}:${symbol.location.range.start.line + 1}`,
-					symbol: symbol
-				}));
-				const selectedItem = await vscode.window.showQuickPick(items, { placeHolder: '選擇一個函式' });
-				if (selectedItem) {
-					const { symbol } = selectedItem;
-					const doc = await vscode.workspace.openTextDocument(symbol.location.uri);
-					const editor = await vscode.window.showTextDocument(doc);
-					editor.selection = new vscode.Selection(symbol.location.range.start, symbol.location.range.start);
-					editor.revealRange(symbol.location.range);
-				}
-			} else {
-				vscode.window.showInformationMessage('未找到符合的函式');
-			}
-		}
+        // 顯示結果
+        if (intersectedSymbols.length > 0) {
+            const items = intersectedSymbols.map(symbol => ({
+                label: symbol.name,
+                description: `${vscode.workspace.asRelativePath(symbol.location.uri.fsPath)}:${symbol.location.range.start.line + 1}`,
+                symbol: symbol
+            }));
+            const selectedItem = await vscode.window.showQuickPick(items, { placeHolder: '選擇一個符號' });
+            if (selectedItem) {
+                const { symbol } = selectedItem;
+                const doc = await vscode.workspace.openTextDocument(symbol.location.uri);
+                const editor = await vscode.window.showTextDocument(doc);
+                editor.selection = new vscode.Selection(symbol.location.range.start, symbol.location.range.start);
+                editor.revealRange(symbol.location.range);
+            }
+        }
 		else
 		{
-			vscode.window.showInformationMessage('未找到任何符号。请确保语言服务已启用并完成索引。啟用替代方案。');
+			vscode.window.showInformationMessage('未找到同時包含所有關鍵字的符號，啟用替代方案。');
 			const rootPath = workspaceFolders[0].uri.fsPath;
 
 			// 搜尋並提取函式名稱
@@ -79,6 +78,26 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     context.subscriptions.push(disposable);
+}
+/**
+ * 取兩組符號陣列的交集，只保留同一個符號。
+ * 這裡用 name, uri, range 同時比對，才可視為同一個符號。
+ */
+function intersectionOfSymbols(a: vscode.SymbolInformation[], b: vscode.SymbolInformation[]): vscode.SymbolInformation[] {
+    // 先把 b 存成 map 或 set 供快速比對
+    // 注意 range 的比對可以用 isEqual()，但因為這裡沒得直接呼叫，只能比較行/列
+    const bSet = new Set(b.map(sym => getSymbolKey(sym)));
+
+    return a.filter(sym => bSet.has(getSymbolKey(sym)));
+}
+
+function getSymbolKey(sym: vscode.SymbolInformation): string {
+    const uriStr = sym.location.uri.toString();
+    const startLine = sym.location.range.start.line;
+    const startChar = sym.location.range.start.character;
+    const endLine = sym.location.range.end.line;
+    const endChar = sym.location.range.end.character;
+    return `${sym.name}@@${uriStr}@@[${startLine},${startChar}]-[${endLine},${endChar}]`;
 }
 
 async function getAllFunctionNames(dir: string): Promise<string[]> {
