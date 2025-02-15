@@ -1,33 +1,72 @@
 {
-  "name": "search-enhancement",
-  "displayName": "search_enhancement",
-  "description": "The extension enhance the search policy for code",
-  "version": "0.0.1",
+  "name": "vscode-search-enhancement",
+  "displayName": "Search Enhancement for code",
+  "description": "The extension helps developers search functions/variables in code by keywords",
+  "keywords": ["search", "keyword"],
+  "version": "0.1.0",
+  "publisher": "jeffreyhc",
   "engines": {
     "vscode": "^1.96.0"
   },
   "categories": [
     "Other"
   ],
+  "icon": "resource/icons/search.png",
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "search-enhancement.helloWorld",
-        "title": "Hello World"
-      },
-      {
         "command": "extension.searchFunctions",
         "title": "Search Symbols by Keywords"
+      },
+      {
+        "command": "extension.openFile",
+        "title": "Open File"
+      },
+      {
+        "command": "extension.openFileInNewTab",
+        "title": "Open File in New Tab"
       }
     ],
-    "keybindings": [
+    "viewsContainers": {
+      "activitybar": [
         {
-            "command": "extension.searchFunctions",
-            "key": "ctrl+alt+f",
-            "when": "editorTextFocus"
+          "id": "searchResultsContainer",
+          "title": "Search Enhancements",
+          "icon": "resource/icons/search.svg"
         }
+      ]
+    },
+    "views": {
+      "searchResultsContainer": [
+        {
+          "id": "searchResultsView",
+          "name": "",
+          "type": "webview"
+        }
+      ]
+    },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "extension.openFile",
+          "when": "view == searchResultsView",
+          "group": "navigation"
+        },
+        {
+          "command": "extension.openFileInNewTab",
+          "when": "view == searchResultsView",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "extension.searchFunctions",
+        "key": "ctrl+alt+f",
+        "when": "editorTextFocus"
+      }
     ]
   },
   "scripts": {
@@ -39,14 +78,26 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.96.0",
+    "@eslint/js": "^9.20.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/vscode": "^1.96.0",
     "@typescript-eslint/eslint-plugin": "^8.17.0",
     "@typescript-eslint/parser": "^8.17.0",
-    "eslint": "^9.16.0",
-    "typescript": "^5.7.2",
     "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.4.1"
-  }
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.20.1",
+    "globals": "^15.15.0",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.24.0"
+  },
+  "license": "Refer to LICENSE.md",
+  "bugs": {
+    "url": "https://github.com/jeffreyhc/vscode-search-enhancement/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jeffreyhc/vscode-search-enhancement.git"
+  },
+  "homepage": "https://github.com/jeffreyhc/vscode-search-enhancement/blob/main/README.md"
 }

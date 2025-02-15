@@ -3,81 +3,281 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 export function activate(context: vscode.ExtensionContext) {
-    let disposable = vscode.commands.registerCommand('extension.searchFunctions', async () => {
-        // 讓使用者輸入關鍵字
-        const input = await vscode.window.showInputBox({ placeHolder: '請輸入關鍵字，以空格分隔' });
-        if (!input) {
-            return;
-        }
-        const keywords = input.trim().split(/\s+/).map(k => k.toLowerCase());
+    const searchResultsProvider = new SearchResultsProvider();
+    //vscode.window.registerTreeDataProvider('searchResults', searchResultsProvider);
 
-        // 取得工作區路徑
-        const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (!workspaceFolders) {
-            vscode.window.showErrorMessage('請打開一個工作區');
-            return;
-        }
-        const rootPath = workspaceFolders[0].uri.fsPath;
-
-        // == 改為使用 ctags 資料庫( .tags ) 取得符號清單 ==
-        const tagsFilePath = path.join(rootPath, '.tags');
-
-        if (!fs.existsSync(tagsFilePath)) {
-            vscode.window.showErrorMessage('未找到 .tags 檔案，請先使用 ctags 產生索引。');
-            return;
-        }
-
-        // 解析 .tags 檔案，取得所有符號資訊
-        const ctagsSymbols = await getSymbolsFromTags(tagsFilePath);
-
-        if (ctagsSymbols.length > 0) {
-            // 取得 ctagsSymbols，然後做篩選
-            const matchedSymbols = ctagsSymbols.filter(sym => {
-                // 紀錄原始名稱
-                const originalName = sym.name;
-
-                // 拆解 symbol.name 為多個 sub-symbol (小寫化)
-                const subSymbolsLowerCase = originalName.split('_').map(s => s.toLowerCase());
-
-                // 檢查：keywords 中的每個 keyword，是否都出現在 subSymbolsLowerCase 裡
-                return keywords.every(keyword => subSymbolsLowerCase.includes(keyword));
-            });
-
-            if (matchedSymbols.length > 0) {
-                // 顯示結果並讓使用者選擇
-                const items = matchedSymbols.map(sym => ({
-                    label: sym.name,
-                    description: `${path.relative(rootPath, sym.file)}:${sym.line}`,
-                    symbol: sym
-                }));
-                const selectedItem = await vscode.window.showQuickPick(items, {
-                    placeHolder: '選擇一個符號'
-                });
-                if (selectedItem) {
-                    // 開啟檔案並跳至行號
-                    const doc = await vscode.workspace.openTextDocument(selectedItem.symbol.file);
-                    const editor = await vscode.window.showTextDocument(doc);
-
-                    // ctags 的行號通常是 1-based，VS Code 的行號是 0-based
-                    const line = Math.max(0, selectedItem.symbol.line - 1);
-                    const position = new vscode.Position(line, 0);
-
-                    editor.selection = new vscode.Selection(position, position);
-                    editor.revealRange(new vscode.Range(position, position));
-                }
-            } else {
-                // ctags 資料庫中找不到符合關鍵字的符號 -> 執行 fallback
-                vscode.window.showInformationMessage('ctags 找不到符合的符號，啟用正則搜尋。');
-                await runFallbackSearch(rootPath, keywords);
-            }
-        } else {
-            // ctagsSymbols 是空 -> 執行 fallback
-            vscode.window.showInformationMessage('ctags 索引無內容，啟用正則搜尋。');
-            await runFallbackSearch(rootPath, keywords);
-        }
+    // 使用 WebviewViewProvider 來註冊側邊欄中的搜尋視圖
+    const viewProvider = new SearchFunctionsViewProvider(context.extensionUri, searchResultsProvider);
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider(SearchFunctionsViewProvider.viewId, viewProvider)
+    );
+    vscode.commands.registerCommand('extension.searchFunctions', () => {
+        // 可在此做點擊後的操作，例如切換到 Explorer 或設定焦點到搜尋視圖
+        //vscode.window.showInformationMessage('Test');
+        vscode.commands.executeCommand('workbench.view.extension.searchResultsContainer').then(() => {
+            viewProvider.focusSearchInput();
+        });
     });
 
-    context.subscriptions.push(disposable);
+    vscode.commands.registerCommand('extension.openFile', async (item: SearchResultItem) => {
+        const doc = await vscode.workspace.openTextDocument(item.filePath);
+        const editor = await vscode.window.showTextDocument(doc);
+        const line = Math.max(0, item.line - 1);
+        const position = new vscode.Position(line, 0);
+        editor.selection = new vscode.Selection(position, position);
+        editor.revealRange(new vscode.Range(position, position));
+    });
+
+    vscode.commands.registerCommand('extension.openFileInNewTab', async (item: SearchResultItem) => {
+        const doc = await vscode.workspace.openTextDocument(item.filePath);
+        const editor = await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.Beside });
+        const line = Math.max(0, item.line - 1);
+        const position = new vscode.Position(line, 0);
+        editor.selection = new vscode.Selection(position, position);
+        editor.revealRange(new vscode.Range(position, position));
+    });
+}
+
+class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
+    public static readonly viewId = 'searchResultsView';
+    private view: vscode.WebviewView | undefined;
+    
+
+    constructor(private readonly _extensionUri: vscode.Uri,
+                private readonly searchResultsProvider: SearchResultsProvider) { }
+
+    public resolveWebviewView(
+		webviewView: vscode.WebviewView,
+	) {
+        this.view = webviewView;
+        webviewView.webview.options = {
+            enableScripts: true,
+            localResourceRoots: [this._extensionUri]
+        };
+
+        webviewView.webview.html = this.getHtmlForWebview();
+
+        webviewView.webview.onDidReceiveMessage(
+            async message => {
+                switch (message.command) {
+                    case 'search':
+                        {
+                            const query = message.text.trim();
+                            const keywords: string[] = query.split(/\s+/).map((k: string) => k.toLowerCase());
+
+                            // 取得工作區路徑
+                            const workspaceFolders = vscode.workspace.workspaceFolders;
+                            if (!workspaceFolders) {
+                                vscode.window.showErrorMessage('請打開一個工作區');
+                                return;
+                            }
+                            const rootPath = workspaceFolders[0].uri.fsPath;
+                            // == 使用 ctags 資料庫( .tags ) 取得符號清單 ==
+                            const tagsFilePath = path.join(rootPath, '.tags');
+
+                            if (!fs.existsSync(tagsFilePath)) {
+                                vscode.window.showErrorMessage('未找到 .tags 檔案，請先使用 ctags 產生索引。');
+                                return;
+                            }
+
+                            // 解析 .tags 檔案，取得所有符號資訊
+                            const ctagsSymbols = await getSymbolsFromTags(tagsFilePath);
+
+                            if (ctagsSymbols.length > 0) {
+                                // 取得 ctagsSymbols，然後做篩選
+                                const matchedSymbols = ctagsSymbols.filter(sym => {
+                                    // 紀錄原始名稱
+                                    const originalName = sym.name;
+                    
+                                    // 拆解 symbol.name 為多個 sub-symbol (小寫化)
+                                    const subSymbolsLowerCase = originalName.split('_').map(s => s.toLowerCase());
+                    
+                                    // 檢查：keywords 中的每個 keyword，是否都出現在 subSymbolsLowerCase 裡
+                                    return keywords.every(keyword => subSymbolsLowerCase.includes(keyword));
+                                });
+
+                                if (matchedSymbols.length > 0) {
+                                    const results = matchedSymbols.map(sym => new SearchResultItem(sym.name, sym.file, sym.line, vscode.TreeItemCollapsibleState.None));
+                                    //console.log('Results:', results);
+                                    // 同步更新 TreeView 使用的結果（如果有）
+                                    this.searchResultsProvider.refresh(results);
+                                    // 同時更新 Webview 內的結果顯示
+                                    webviewView.webview.postMessage({ command: 'updateResults', results: results, query: query });
+                                }
+                                else {
+                                    webviewView.webview.postMessage({ command: 'updateResults', results: [], query: query });
+                                }
+                            }
+                        }
+                        break;
+                    case 'openFile':
+                        {
+                            const symbol = message.symbol;
+                            const doc = await vscode.workspace.openTextDocument(symbol.filePath);
+                            const editor = await vscode.window.showTextDocument(doc);
+                            const line = Math.max(0, symbol.line - 1);
+                            const position = new vscode.Position(line, 0);
+                            editor.selection = new vscode.Selection(position, position);
+                            editor.revealRange(new vscode.Range(position, position));
+                        }
+                        break;
+                }
+            }
+        );
+    }
+
+    public focusSearchInput() {
+        if (this.view) {
+            this.view.webview.postMessage({ command: 'focusSearchInput' });
+        }
+    }
+
+    private getHtmlForWebview(): string {
+        return `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Search Functions</title>
+                <style>
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                        margin: 0;
+                        padding: 16px;
+                    }
+                    input[type="text"] {
+                        background: transparent;
+                        color: var(--vscode-input-foreground);
+                        padding: 3px 0 3px 6px;
+                        font-size: inherit;
+                        width: 100%;
+                        resize: none;
+                        line-break: anywhere;
+                    }
+                    #status {
+                        margin-bottom: 8px;
+                        color: #888;
+                    }
+                    ul {
+                        padding: 1px;
+                    }
+                    li {
+                        font-size: inherit;
+                    }
+                    .file-name {
+                        color: gray;
+                    }
+                </style>
+            </head>
+            <body>
+                <input type="text" id="search" placeholder="請輸入關鍵字，以空格分隔" />
+                <div id="status"></div>
+                <ul id="results"></ul>
+                <script>
+                    const vscode = acquireVsCodeApi();
+                    const searchInput = document.getElementById('search');
+                    const statusDiv = document.getElementById('status');
+                    const resultsList = document.getElementById('results');
+
+                    function debounce(func, wait) {
+                        let timeout;
+                        return function(...args) {
+                            const later = () => {
+                                clearTimeout(timeout);
+                                func(...args);
+                            };
+                            clearTimeout(timeout);
+                            timeout = setTimeout(later, wait);
+                        };
+                    }
+
+                    const debouncedSearch = debounce(() => {
+                        const query = searchInput.value.trim();
+                        if (query) {
+                            statusDiv.textContent = \`正在搜尋 "\${query}"...\`;
+                            vscode.postMessage({ command: 'search', text: query });
+                        } else {
+                            statusDiv.textContent = '';
+                            resultsList.innerHTML = '';
+                        }
+                    }, 600);
+
+                    searchInput.addEventListener('input', debouncedSearch);
+
+                    window.addEventListener('message', event => {
+                        const message = event.data;
+                        switch (message.command) {
+                            case 'updateResults':
+                                const results = message.results;
+                                const query = message.query;
+                                resultsList.innerHTML = '';
+
+                                if (results.length > 0) {
+                                    statusDiv.textContent = \`搜尋 "\${query}"，找到 \${results.length} 個結果：\`;
+                                    results.forEach(result => {
+                                        const li = document.createElement('li');
+                                        li.innerHTML = \`\${result.label}: <span class="file-name">\${result.fileName}</span>\`;
+                                        li.addEventListener('click', () => {
+                                            vscode.postMessage({ command: 'openFile', symbol: result });
+                                        });
+                                        resultsList.appendChild(li);
+                                    });
+                                } else {
+                                    statusDiv.textContent = \`搜尋 "\${query}"，未找到結果。\`;
+                                }
+                                break;
+                            case 'focusSearchInput':
+                                searchInput.focus();
+                                break;
+                        }
+                    });
+                </script>
+            </body>
+            </html>
+        `;
+    }
+}
+
+class SearchResultsProvider implements vscode.TreeDataProvider<SearchResultItem> {
+    private _onDidChangeTreeData: vscode.EventEmitter<SearchResultItem | undefined | void> = new vscode.EventEmitter<SearchResultItem | undefined | void>();
+    readonly onDidChangeTreeData: vscode.Event<SearchResultItem | undefined | void> = this._onDidChangeTreeData.event;
+
+    private results: SearchResultItem[] = [];
+
+    refresh(results: SearchResultItem[]): void {
+        this.results = results;
+        this._onDidChangeTreeData.fire();
+    }
+
+    getTreeItem(element: SearchResultItem): vscode.TreeItem {
+        return element;
+    }
+
+    getChildren(element?: SearchResultItem): Thenable<SearchResultItem[]> {
+        if (element) {
+            return Promise.resolve([]);
+        } else {
+            return Promise.resolve(this.results);
+        }
+    }
+}
+
+class SearchResultItem extends vscode.TreeItem {
+    fileName: string;
+    constructor(
+        public readonly label: string,
+        public readonly filePath: string,
+        public readonly line: number,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState
+    ) {
+        super(label, collapsibleState);
+        this.tooltip = `${this.filePath}:${this.line}`;
+        this.description = `${this.filePath}:${this.line}`;
+        this.fileName = `${path.basename(this.filePath)}`;
+    }
+
+    contextValue = 'searchResultItem';
 }
 
 /** ctags 解析後的符號資料結構，可自行擴充 */
@@ -88,7 +288,7 @@ interface CtagsSymbol {
   /** 符號種類 (function, variable, class...) */
   kind?: string;
   /** 可能還有更多屬性，如 language, scope, 依需求自行加入 */
-  [key: string]: any;
+  [key: string]: string | number | boolean | undefined;
 }
 
 /**
@@ -169,85 +369,10 @@ export async function getSymbolsFromTags(tagsFilePath: string): Promise<CtagsSym
         });
       }
     }
-
     symbols.push(symbol);
   }
 
   return symbols;
-}
-
-
-// == 新增：封裝 fallback 的流程，與 V1 相同 ==
-async function runFallbackSearch(rootPath: string, keywords: string[]) {
-    // 搜尋並提取函式名稱 (您也可擴充為提取變數、巨集等)
-    const functionNames = await getAllFunctionNames(rootPath);
-
-    // 篩選符合關鍵字的函式
-    const matchedFunctions = functionNames.filter(name => {
-        return keywords.every(keyword => name.includes(keyword));
-    });
-
-    // 顯示結果
-    if (matchedFunctions.length > 0) {
-        const selectedFunction = await vscode.window.showQuickPick(matchedFunctions, { placeHolder: '選擇一個函式' });
-        if (selectedFunction) {
-            // 定位到函式定義
-            locateFunctionDefinition(rootPath, selectedFunction);
-        }
-    } else {
-        vscode.window.showInformationMessage('未找到符合的函式');
-    }
-}
-
-// == 以下保持與 V1 相同: 取得函式名稱、使用正則定位等 ==
-
-async function getAllFunctionNames(dir: string): Promise<string[]> {
-    let functionNames: string[] = [];
-    const files = fs.readdirSync(dir);
-
-    for (const file of files) {
-        const fullPath = path.join(dir, file);
-        const stat = fs.statSync(fullPath);
-
-        if (stat.isDirectory()) {
-            const names = await getAllFunctionNames(fullPath);
-            functionNames = functionNames.concat(names);
-        } else if (file.endsWith('.c') || file.endsWith('.h')) {
-            const content = fs.readFileSync(fullPath, 'utf-8');
-            const names = extractFunctionNames(content);
-            functionNames = functionNames.concat(names);
-        }
-    }
-    return functionNames;
-}
-
-function extractFunctionNames(content: string): string[] {
-    const functionNames: string[] = [];
-    const regex = /^[a-zA-Z_][a-zA-Z0-9_*\s]*\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)\s*\{/gm;
-    let match;
-    while ((match = regex.exec(content)) !== null) {
-        functionNames.push(match[1]);
-    }
-    return functionNames;
-}
-
-function locateFunctionDefinition(rootPath: string, functionName: string) {
-    const files = vscode.workspace.findFiles('**/*.{c,h}');
-    files.then(files => {
-        files.forEach(file => {
-            vscode.workspace.openTextDocument(file).then(doc => {
-                const content = doc.getText();
-                const regex = new RegExp(`[a-zA-Z_][a-zA-Z0-9_\\*\\s]*\\s+${functionName}\\s*\\([^)]*\\)\\s*\\{`, 'gm');
-                if (regex.test(content)) {
-                    vscode.window.showTextDocument(doc).then(editor => {
-                        const position = doc.positionAt(content.indexOf(functionName));
-                        editor.selection = new vscode.Selection(position, position);
-                        editor.revealRange(new vscode.Range(position, position));
-                    });
-                }
-            });
-        });
-    });
 }
 
 export function deactivate() {}
