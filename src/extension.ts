@@ -41,7 +41,7 @@ export function activate(context: vscode.ExtensionContext) {
 class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewId = 'searchResultsView';
     private view: vscode.WebviewView | undefined;
-    
+    private isPartialMatchMode = false;
 
     constructor(private readonly _extensionUri: vscode.Uri,
                 private readonly searchResultsProvider: SearchResultsProvider) { }
@@ -55,7 +55,7 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
             localResourceRoots: [this._extensionUri]
         };
 
-        webviewView.webview.html = this.getHtmlForWebview();
+        webviewView.webview.html = this.getHtmlForWebview(webviewView.webview);
 
         webviewView.webview.onDidReceiveMessage(
             async message => {
@@ -91,9 +91,19 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                     
                                     // 拆解 symbol.name 為多個 sub-symbol (小寫化)
                                     const subSymbolsLowerCase = originalName.split('_').map(s => s.toLowerCase());
-                    
-                                    // 檢查：keywords 中的每個 keyword，是否都出現在 subSymbolsLowerCase 裡
-                                    return keywords.every(keyword => subSymbolsLowerCase.includes(keyword));
+
+                                    let result = false;
+                                    if (!this.isPartialMatchMode) {
+                                        // 完全符合：keywords 必須完全符合 subSymbolsLowerCase 中的任意一個
+                                        result = keywords.every(keyword => subSymbolsLowerCase.includes(keyword));
+                                    }
+                                    else {
+                                        // 部分符合：檢查keywords 中的每個 keyword，是否都出現在 subSymbolsLowerCase 裡的任意部分
+                                        result = keywords.every(keyword =>
+                                            subSymbolsLowerCase.some(subSymbol => subSymbol.includes(keyword))
+                                        );
+                                    }
+                                    return result;
                                 });
 
                                 if (matchedSymbols.length > 0) {
@@ -121,6 +131,9 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                             editor.revealRange(new vscode.Range(position, position));
                         }
                         break;
+                    case 'changeSearchMode':
+                        this.isPartialMatchMode = message.mode;
+                        break;
                 }
             }
         );
@@ -132,53 +145,105 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
         }
     }
 
-    private getHtmlForWebview(): string {
+    private getHtmlForWebview(webview: vscode.Webview): string {
+        const nonce = this.getNonce();
+        const codiconsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css'));
         return `
             <!DOCTYPE html>
             <html lang="en">
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};">
                 <title>Search Functions</title>
+                <link rel="stylesheet" href="${codiconsUri}" />
                 <style>
                     body {
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
                         margin: 0;
                         padding: 16px;
                     }
-                    input[type="text"] {
-                        background: transparent;
-                        color: var(--vscode-input-foreground);
-                        padding: 3px 0 3px 6px;
-                        font-size: inherit;
+                    #search-container {
+                        display: flex;
+                        align-items: center;
                         width: 100%;
-                        resize: none;
-                        line-break: anywhere;
+                    }
+                    #search {
+                        flex: 1;
+                        padding: 8px;
+                        box-sizing: border-box;
+                        border: 1px solid #444;
+                        background-color: #222;
+                        color: white;
+                    }
+                    #toggleSearchMode {
+                        width: 32px;
+                        height: 32px;
+                        margin-left: 5px;
+                        background-color: #333;
+                        border: 1px solid #444;
+                        color: white;
+                        cursor: pointer;
+                        transition: background-color 0.2s;
+                    }
+                    #toggleSearchMode:hover {
+                        background-color: #555;
+                    }
+                    codicon {
+                        display: flex;
+	                    align-items: center;
+                        justify-content: center;
+                        font-size: 20px;
+                    }
+                    #toggleSearchMode .codicon {
+                        color: white; /* 預設 icon 顏色 */
+                    }
+                    /* 當模式啟用時，讓按鈕有 "按下" 的狀態 */
+                    #toggleSearchMode.active {
+                        background-color: #007acc; /* VS Code 預設藍色 */
+                        border-color: #005f99;
+                    }
+                    #toggleSearchMode.active .codicon {
+                        color: yellow; /* 啟用 Partial Match Mode 時 icon 變黃 */
+                    }
+                    #toggleSearchMode:hover .codicon {
+                        color: lightgray; /* 滑鼠懸停時 icon 變淺灰 */
                     }
                     #status {
-                        margin-bottom: 8px;
+                        margin-top: 8px;
                         color: #888;
                     }
                     ul {
-                        padding: 1px;
+                        list-style-type: none;
+                        padding: 0;
                     }
                     li {
-                        font-size: inherit;
+                        padding: 8px;
+                        border-bottom: 1px;
+                        cursor: pointer;
                     }
-                    .file-name {
-                        color: gray;
+                    li:hover {
+                        background-color:rgb(70, 70, 70);
                     }
                 </style>
             </head>
             <body>
-                <input type="text" id="search" placeholder="請輸入關鍵字，以空格分隔" />
+                <div id="search-container">
+                    <input type="text" id="search" placeholder="請輸入關鍵字，以空格分隔" />
+                    <button id="toggleSearchMode" title="Partial match mode">
+                        <span class="codicon codicon-sparkle"></span>
+                    </button>
+                </div>
                 <div id="status"></div>
                 <ul id="results"></ul>
-                <script>
+                <script nonce="${nonce}">
                     const vscode = acquireVsCodeApi();
                     const searchInput = document.getElementById('search');
                     const statusDiv = document.getElementById('status');
                     const resultsList = document.getElementById('results');
+                    const toggleButton = document.getElementById("toggleSearchMode");
+
+                    let isPartialMatchEnabled = false;
 
                     function debounce(func, wait) {
                         let timeout;
@@ -205,6 +270,21 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
 
                     searchInput.addEventListener('input', debouncedSearch);
 
+                    toggleButton.addEventListener("click", () => {
+                        isPartialMatchEnabled = !isPartialMatchEnabled;
+                        vscode.postMessage({ command: "changeSearchMode", mode: isPartialMatchEnabled });
+
+                        toggleButton.classList.toggle("active", isPartialMatchEnabled);
+                        toggleButton.title = isPartialMatchEnabled
+                            ? "Partial match mode (activated)"
+                            : "Partial match mode";
+
+                        // 如果搜尋框中有內容，立即觸發搜尋
+                        if (searchInput.value.trim()) {
+                            debouncedSearch();
+                        }
+                    });
+
                     window.addEventListener('message', event => {
                         const message = event.data;
                         switch (message.command) {
@@ -217,7 +297,20 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                                     statusDiv.textContent = \`搜尋 "\${query}"，找到 \${results.length} 個結果：\`;
                                     results.forEach(result => {
                                         const li = document.createElement('li');
-                                        li.innerHTML = \`\${result.label}: <span class="file-name">\${result.fileName}</span>\`;
+
+                                        // 建立標籤文字
+                                        const labelText = document.createTextNode(result.label);
+                                        li.appendChild(labelText);
+
+                                        // 添加冒號
+                                        li.appendChild(document.createTextNode(': '));
+
+                                        // 建立檔案名稱 span
+                                        const fileNameSpan = document.createElement('span');
+                                        fileNameSpan.className = 'file-name';
+                                        fileNameSpan.textContent = result.fileName;
+                                        li.appendChild(fileNameSpan);
+
                                         li.addEventListener('click', () => {
                                             vscode.postMessage({ command: 'openFile', symbol: result });
                                         });
@@ -236,6 +329,15 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
             </body>
             </html>
         `;
+    }
+
+    private getNonce() {
+        let text = '';
+        const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        for (let i = 0; i < 32; i++) {
+            text += possible.charAt(Math.floor(Math.random() * possible.length));
+        }
+        return text;
     }
 }
 
