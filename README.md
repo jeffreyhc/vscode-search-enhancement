@@ -39,7 +39,7 @@ search-enhancement 是用於加強vscode的搜尋方式的擴充套件
 
 ## Contributing
 
-歡迎貢獻代碼、報告問題和提交功能請求。請參閱 [CONTRIBUTING.md](CONTRIBUTING.md) 了解更多資訊。
+歡迎貢獻代碼、報告問題和提交功能請求。請參閱 [Contributing.md](Contributing.md) 了解更多資訊。
 
 ## Developing
 - `npm install`
