@@ -4,7 +4,6 @@ import * as path from 'path';
 
 export function activate(context: vscode.ExtensionContext) {
     const searchResultsProvider = new SearchResultsProvider();
-    //vscode.window.registerTreeDataProvider('searchResults', searchResultsProvider);
 
     // 使用 WebviewViewProvider 來註冊側邊欄中的搜尋視圖
     const viewProvider = new SearchFunctionsViewProvider(context.extensionUri, searchResultsProvider);
@@ -13,7 +12,6 @@ export function activate(context: vscode.ExtensionContext) {
     );
     vscode.commands.registerCommand('extension.searchFunctions', () => {
         // 可在此做點擊後的操作，例如切換到 Explorer 或設定焦點到搜尋視圖
-        //vscode.window.showInformationMessage('Test');
         vscode.commands.executeCommand('workbench.view.extension.searchResultsContainer').then(() => {
             viewProvider.focusSearchInput();
         });
@@ -43,6 +41,11 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
     private view: vscode.WebviewView | undefined;
     private isPartialMatchMode = false;
 
+    // 讀取設定
+    private config = vscode.workspace.getConfiguration("searchEnhancement");
+    private debounceTime = this.config.get<number>("debounceTime", 600);
+    private tagsFilePathConfig = this.config.get<string>("tagsFilePath", "${workspaceFolder}/.tags");
+
     constructor(private readonly _extensionUri: vscode.Uri,
                 private readonly searchResultsProvider: SearchResultsProvider) { }
 
@@ -56,6 +59,16 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
         };
 
         webviewView.webview.html = this.getHtmlForWebview(webviewView.webview);
+
+        // 監聽設定變更，讓 debounceTime 和 tagsFilePath 即時更新
+        vscode.workspace.onDidChangeConfiguration(event => {
+            if (event.affectsConfiguration("searchEnhancement.debounceTime")) {
+                this.debounceTime = vscode.workspace.getConfiguration("searchEnhancement").get<number>("debounceTime", 600);
+            }
+            if (event.affectsConfiguration("searchEnhancement.tagsFilePath")) {
+                this.tagsFilePathConfig = vscode.workspace.getConfiguration("searchEnhancement").get<string>("tagsFilePath", "${workspaceFolder}/.tags");
+            }
+        });
 
         webviewView.webview.onDidReceiveMessage(
             async message => {
@@ -73,7 +86,7 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                             }
                             const rootPath = workspaceFolders[0].uri.fsPath;
                             // == 使用 ctags 資料庫( .tags ) 取得符號清單 ==
-                            const tagsFilePath = path.join(rootPath, '.tags');
+                            const tagsFilePath = this.tagsFilePathConfig.replace("${workspaceFolder}", rootPath);
 
                             if (!fs.existsSync(tagsFilePath)) {
                                 vscode.window.showErrorMessage('未找到 .tags 檔案，請先使用 ctags 產生索引。');
@@ -108,7 +121,6 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
 
                                 if (matchedSymbols.length > 0) {
                                     const results = matchedSymbols.map(sym => new SearchResultItem(sym.name, sym.file, sym.line, vscode.TreeItemCollapsibleState.None));
-                                    //console.log('Results:', results);
                                     // 同步更新 TreeView 使用的結果（如果有）
                                     this.searchResultsProvider.refresh(results);
                                     // 同時更新 Webview 內的結果顯示
@@ -266,7 +278,7 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                             statusDiv.textContent = '';
                             resultsList.innerHTML = '';
                         }
-                    }, 600);
+                    }, ${this.debounceTime});
 
                     searchInput.addEventListener('input', debouncedSearch);
 

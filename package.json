@@ -3,7 +3,7 @@
   "displayName": "Search Enhancement for code",
   "description": "The extension helps developers search functions/variables in code by keywords",
   "keywords": ["search", "keyword"],
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "jeffreyhc",
   "engines": {
     "vscode": "^1.96.0"
@@ -15,6 +15,21 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Search Enhancement Settings",
+      "properties": {
+        "searchEnhancement.debounceTime": {
+          "type": "number",
+          "default": 600,
+          "description": "搜尋框的 debounce 延遲時間(毫秒)"
+        },
+        "searchEnhancement.tagsFilePath": {
+          "type": "string",
+          "default": "${workspaceFolder}/.tags",
+          "description": "ctags 的索引檔案路徑"
+        }
+      }
+    },
     "commands": [
       {
         "command": "extension.searchFunctions",

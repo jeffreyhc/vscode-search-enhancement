@@ -18,3 +18,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - 如Issue #3的需求，搜尋欄增加Partial match mode
 #### Improve
 - 降低XSS發生的可能
+
+### [0.2.0] - 2025-02-24
+#### Add
+- github action support: push跟pull request都會編譯並跑過eslint
+- 將搜尋的debounce time與.tag路徑改為configurable
+#### Update
+- Readme.md:
+  - 修改Features的文字說明，並更新相關截圖
+  - 修改Usage的文字說明，把用法寫得更清楚一點
