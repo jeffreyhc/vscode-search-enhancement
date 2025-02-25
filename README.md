@@ -22,13 +22,14 @@ search-enhancement 是用於加強vscode的搜尋方式的擴充套件
 
 ## Installation
 
-1. 下載並安裝 [Visual Studio Code](https://code.visualstudio.com/)
+1. 下載並安裝 [Visual Studio Code](https://code.visualstudio.com/) (需要v1.96(含)之後的版本)
 2. 在VS Code中的延伸模組Marketplace搜尋search-enhancement以安裝
 
 ## Requirements
 這個擴充套件使用前需要先做前置設定:
 1. 對資料夾建立workspace
-2. 使用[Ctags](https://github.com/universal-ctags/ctags/releases)建立symbol list:安裝後在workspace根目錄執行`ctags -R --languages=C,C++ --fields=+n --extras=+q -f .tags`
+2. 使用[Ctags](https://github.com/universal-ctags/ctags) (請根據使用平台選擇對應的release版本下載)
+   1. 建立symbol list:安裝後在workspace根目錄執行`ctags -R --languages=C,C++ --fields=+n --extras=+q -f .tags`
 
 ## Usage
 
