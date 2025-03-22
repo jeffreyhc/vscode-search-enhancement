@@ -3,7 +3,7 @@
   "displayName": "Search Enhancement for code",
   "description": "The extension helps developers search functions/variables in code by keywords",
   "keywords": ["search", "keyword"],
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "jeffreyhc",
   "engines": {
     "vscode": "^1.96.0"

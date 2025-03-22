@@ -27,3 +27,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Readme.md:
   - 修改Features的文字說明，並更新相關截圖
   - 修改Usage的文字說明，把用法寫得更清楚一點
+
+### [0.2.1] - 2025-03-24
+#### Update
+- Readme.md:
+  - 修改Requirements的文字說明，把用法寫得更清楚一點

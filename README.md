@@ -28,8 +28,12 @@ search-enhancement 是用於加強vscode的搜尋方式的擴充套件
 ## Requirements
 這個擴充套件使用前需要先做前置設定:
 1. 對資料夾建立workspace
-2. 使用[Ctags](https://github.com/universal-ctags/ctags) (請根據使用平台選擇對應的release版本下載)
-   1. 建立symbol list:安裝後在workspace根目錄執行`ctags -R --languages=C,C++ --fields=+n --extras=+q -f .tags`
+2. 使用[Ctags](https://github.com/universal-ctags/ctags)建立symbol list:
+   1. 請根據使用平台選擇對應的release版本下載:
+      1. [Windows](https://github.com/universal-ctags/ctags-win32/tags)
+      2. [Linux](https://github.com/universal-ctags/ctags-nightly-build/tags)
+      3. [Mac](https://formulae.brew.sh/formula/universal-ctags)
+   2. 下載後在workspace根目錄執行`ctags -R --languages=C,C++ --fields=+n --extras=+q -f .tags` (建議可將ctag資料夾加入path環境變數方便呼叫)
 
 ## Usage
 
