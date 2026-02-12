@@ -26,7 +26,16 @@
         "searchEnhancement.tagsFilePath": {
           "type": "string",
           "default": "${workspaceFolder}/.tags",
-          "description": "ctags 的索引檔案路徑"
+          "description": "ctags 的索引檔案路徑",
+          "deprecationMessage": "Deprecated: use searchEnhancement.tagsFilePaths instead. Existing values will be migrated automatically."
+        },
+        "searchEnhancement.tagsFilePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "ctags index file paths. Supports multiple .tags files."
         }
       }
     },

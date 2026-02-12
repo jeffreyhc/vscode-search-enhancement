@@ -58,3 +58,11 @@ search-enhancement 是用於加強vscode的搜尋方式的擴充套件
 ## 致謝
 
 圖標來源於 [SVG Repo](https://www.svgrepo.com/)
+
+## Tags File Configuration
+
+- Primary setting: `searchEnhancement.tagsFilePaths` (string array).
+- When `tagsFilePaths` is empty, the extension initializes `tagsFilePaths[0]` automatically:
+  - If legacy `searchEnhancement.tagsFilePath` has a non-default custom value, it migrates that value.
+  - Otherwise it uses the default `${workspaceFolder}/.tags`.
+- Legacy `searchEnhancement.tagsFilePath` is deprecated and retained only for migration compatibility.

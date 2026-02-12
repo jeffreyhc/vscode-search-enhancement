@@ -2,6 +2,12 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { matchesAllClauses, parseQueryClauses } from './searchMatcher';
+import {
+    dedupeSymbolsByIdentity,
+    normalizeTagsFilePathTemplates,
+    pickInitialTagsFilePathTemplates,
+    resolveTagsFilePaths
+} from './tagsConfig';
 
 export function activate(context: vscode.ExtensionContext) {
     const searchResultsProvider = new SearchResultsProvider();
@@ -45,7 +51,7 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
     // 讀取設定
     private config = vscode.workspace.getConfiguration("searchEnhancement");
     private debounceTime = this.config.get<number>("debounceTime", 600);
-    private tagsFilePathConfig = this.config.get<string>("tagsFilePath", "${workspaceFolder}/.tags");
+    private tagsFilePathsConfig = this.config.get<string[]>("tagsFilePaths", []);
 
     constructor(private readonly _extensionUri: vscode.Uri,
                 private readonly searchResultsProvider: SearchResultsProvider) { }
@@ -66,8 +72,8 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
             if (event.affectsConfiguration("searchEnhancement.debounceTime")) {
                 this.debounceTime = vscode.workspace.getConfiguration("searchEnhancement").get<number>("debounceTime", 600);
             }
-            if (event.affectsConfiguration("searchEnhancement.tagsFilePath")) {
-                this.tagsFilePathConfig = vscode.workspace.getConfiguration("searchEnhancement").get<string>("tagsFilePath", "${workspaceFolder}/.tags");
+            if (event.affectsConfiguration("searchEnhancement.tagsFilePaths")) {
+                this.tagsFilePathsConfig = vscode.workspace.getConfiguration("searchEnhancement").get<string[]>("tagsFilePaths", []);
             }
         });
 
@@ -86,16 +92,29 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                                 return;
                             }
                             const rootPath = workspaceFolders[0].uri.fsPath;
-                            // == 使用 ctags 資料庫( .tags ) 取得符號清單 ==
-                            const tagsFilePath = this.tagsFilePathConfig.replace("${workspaceFolder}", rootPath);
+                            const tagsFilePathTemplates = await this.ensureTagsFilePathsInitialized(workspaceFolders[0].uri);
+                            const tagsFilePaths = resolveTagsFilePaths(tagsFilePathTemplates, rootPath);
 
-                            if (!fs.existsSync(tagsFilePath)) {
-                                vscode.window.showErrorMessage('未找到 .tags 檔案，請先使用 ctags 產生索引。');
+                            const existingTagsFiles: string[] = [];
+                            const missingTagsFiles: string[] = [];
+                            tagsFilePaths.forEach(tagsFilePath => {
+                                if (fs.existsSync(tagsFilePath)) {
+                                    existingTagsFiles.push(tagsFilePath);
+                                } else {
+                                    missingTagsFiles.push(tagsFilePath);
+                                }
+                            });
+
+                            if (missingTagsFiles.length > 0) {
+                                vscode.window.showWarningMessage(`Skipped missing tags files: ${missingTagsFiles.join(', ')}`);
+                            }
+                            if (existingTagsFiles.length === 0) {
+                                vscode.window.showErrorMessage('No tags files found. Please generate ctags indexes first.');
                                 return;
                             }
 
-                            // 解析 .tags 檔案，取得所有符號資訊
-                            const ctagsSymbols = await getSymbolsFromTags(tagsFilePath);
+                            const symbolGroups = await Promise.all(existingTagsFiles.map(getSymbolsFromTags));
+                            const ctagsSymbols = dedupeSymbolsByIdentity(symbolGroups.flat());
 
                             if (ctagsSymbols.length > 0) {
                                 // 取得 ctagsSymbols，然後做篩選
@@ -133,6 +152,47 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                 }
             }
         );
+    }
+
+    private getConfigurationTargetForLegacyPath(
+        inspected: { workspaceFolderValue?: string; workspaceValue?: string; globalValue?: string } | undefined
+    ): vscode.ConfigurationTarget {
+        if (inspected?.workspaceFolderValue !== undefined) {
+            return vscode.ConfigurationTarget.WorkspaceFolder;
+        }
+        if (inspected?.workspaceValue !== undefined) {
+            return vscode.ConfigurationTarget.Workspace;
+        }
+        if (inspected?.globalValue !== undefined) {
+            return vscode.ConfigurationTarget.Global;
+        }
+        return vscode.ConfigurationTarget.WorkspaceFolder;
+    }
+
+    private async ensureTagsFilePathsInitialized(workspaceFolderUri: vscode.Uri): Promise<string[]> {
+        const scopedConfig = vscode.workspace.getConfiguration("searchEnhancement", workspaceFolderUri);
+        const existingPaths = normalizeTagsFilePathTemplates(scopedConfig.get<string[]>("tagsFilePaths", []));
+        if (existingPaths.length > 0) {
+            this.tagsFilePathsConfig = existingPaths;
+            return existingPaths;
+        }
+
+        const legacyInspect = scopedConfig.inspect<string>("tagsFilePath");
+        const legacyValue = legacyInspect?.workspaceFolderValue ?? legacyInspect?.workspaceValue ?? legacyInspect?.globalValue;
+        const initializedPaths = pickInitialTagsFilePathTemplates(
+            existingPaths,
+            legacyValue,
+            legacyInspect?.defaultValue
+        );
+
+        await scopedConfig.update(
+            "tagsFilePaths",
+            initializedPaths,
+            this.getConfigurationTargetForLegacyPath(legacyInspect)
+        );
+
+        this.tagsFilePathsConfig = initializedPaths;
+        return initializedPaths;
     }
 
     public focusSearchInput() {
