@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { matchesAllClauses, parseQueryClauses } from './searchMatcher';
 
 export function activate(context: vscode.ExtensionContext) {
     const searchResultsProvider = new SearchResultsProvider();
@@ -76,7 +77,7 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                     case 'search':
                         {
                             const query = message.text.trim();
-                            const keywords: string[] = query.split(/\s+/).map((k: string) => k.toLowerCase());
+                            const clauses = parseQueryClauses(query);
 
                             // 取得工作區路徑
                             const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -98,26 +99,9 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
 
                             if (ctagsSymbols.length > 0) {
                                 // 取得 ctagsSymbols，然後做篩選
-                                const matchedSymbols = ctagsSymbols.filter(sym => {
-                                    // 紀錄原始名稱
-                                    const originalName = sym.name;
-                    
-                                    // 拆解 symbol.name 為多個 sub-symbol (小寫化)
-                                    const subSymbolsLowerCase = originalName.split('_').map(s => s.toLowerCase());
-
-                                    let result = false;
-                                    if (!this.isPartialMatchMode) {
-                                        // 完全符合：keywords 必須完全符合 subSymbolsLowerCase 中的任意一個
-                                        result = keywords.every(keyword => subSymbolsLowerCase.includes(keyword));
-                                    }
-                                    else {
-                                        // 部分符合：檢查keywords 中的每個 keyword，是否都出現在 subSymbolsLowerCase 裡的任意部分
-                                        result = keywords.every(keyword =>
-                                            subSymbolsLowerCase.some(subSymbol => subSymbol.includes(keyword))
-                                        );
-                                    }
-                                    return result;
-                                });
+                                const matchedSymbols = ctagsSymbols.filter(sym =>
+                                    matchesAllClauses(sym.name, clauses, this.isPartialMatchMode)
+                                );
 
                                 if (matchedSymbols.length > 0) {
                                     const results = matchedSymbols.map(sym => new SearchResultItem(sym.name, sym.file, sym.line, vscode.TreeItemCollapsibleState.None));
