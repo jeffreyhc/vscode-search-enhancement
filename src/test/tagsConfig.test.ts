@@ -77,4 +77,55 @@ suite('Tags Config', () => {
             '${workspaceFolder}/backend.tags'
         ]);
     });
+
+    test('returns empty array when all path templates are empty', () => {
+        const result = normalizeTagsFilePathTemplates(['', ' ', '\t']);
+        assert.deepStrictEqual(result, []);
+    });
+
+    test('normalization preserves first-seen order', () => {
+        const result = normalizeTagsFilePathTemplates([
+            ' ${workspaceFolder}/b.tags ',
+            '${workspaceFolder}/a.tags',
+            '${workspaceFolder}/b.tags'
+        ]);
+        assert.deepStrictEqual(result, [
+            '${workspaceFolder}/b.tags',
+            '${workspaceFolder}/a.tags'
+        ]);
+    });
+
+    test('legacy path value is trimmed when initializing paths', () => {
+        const result = pickInitialTagsFilePathTemplates(
+            [],
+            '   ${workspaceFolder}/legacy.tags   ',
+            DEFAULT_TAGS_FILE_PATH_TEMPLATE
+        );
+        assert.deepStrictEqual(result, ['${workspaceFolder}/legacy.tags']);
+    });
+
+    test('resolving paths deduplicates equivalent absolute paths', () => {
+        const rootPath = path.resolve('workspace-root');
+        const absoluteDefaultPath = path.join(rootPath, '.tags');
+        const result = resolveTagsFilePaths(
+            ['${workspaceFolder}/.tags', absoluteDefaultPath],
+            rootPath
+        );
+        assert.deepStrictEqual(result, [absoluteDefaultPath]);
+    });
+
+    test('dedupeSymbolsByIdentity keeps first symbol when identity collides', () => {
+        const symbols = [
+            { name: 'foo', file: '/a.ts', line: 10, kind: 'f' },
+            { name: 'foo', file: '/a.ts', line: 10, kind: 'v' }
+        ];
+
+        const result = dedupeSymbolsByIdentity(symbols);
+
+        assert.deepStrictEqual(result, [{ name: 'foo', file: '/a.ts', line: 10, kind: 'f' }]);
+    });
+
+    test('resolveTagsFilePaths returns empty array when no templates provided', () => {
+        assert.deepStrictEqual(resolveTagsFilePaths([], path.resolve('workspace-root')), []);
+    });
 });

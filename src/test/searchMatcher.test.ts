@@ -1,5 +1,10 @@
 import * as assert from 'assert';
-import { matchesAllClauses, parseQueryClauses } from '../searchMatcher';
+import {
+    matchesAllClauses,
+    matchesPhrase,
+    normalizeSymbolSegments,
+    parseQueryClauses
+} from '../searchMatcher';
 
 suite('Search Matcher', () => {
     test('strict token search matches A_B_D_C_F and A_B_C_F_Q for A B C', () => {
@@ -53,5 +58,37 @@ suite('Search Matcher', () => {
             { kind: 'phrase', parts: ['a', 'b', 'c'] },
             { kind: 'token', parts: ['d'] }
         ]);
+    });
+
+    test('empty or whitespace query returns no clauses', () => {
+        assert.deepStrictEqual(parseQueryClauses(''), []);
+        assert.deepStrictEqual(parseQueryClauses('    '), []);
+    });
+
+    test('symbol normalization removes empty underscore segments', () => {
+        assert.deepStrictEqual(normalizeSymbolSegments('A__B___C'), ['a', 'b', 'c']);
+    });
+
+    test('phrase does not match when symbol segments are shorter than phrase', () => {
+        assert.strictEqual(matchesPhrase(['a', 'b'], ['a', 'b', 'c'], false), false);
+        assert.strictEqual(matchesPhrase(['a', 'b'], ['a', 'b', 'c'], true), false);
+    });
+
+    test('empty clauses are treated as match-all', () => {
+        assert.strictEqual(matchesAllClauses('A_B_C', [], false), true);
+    });
+
+    test('partial token clause matches segment substring', () => {
+        const clauses = parseQueryClauses('foo');
+
+        assert.strictEqual(matchesAllClauses('A_FOOBAR_B', clauses, true), true);
+        assert.strictEqual(matchesAllClauses('A_FOOBAR_B', clauses, false), false);
+        assert.strictEqual(matchesAllClauses('A_BAR_C', clauses, true), false);
+    });
+
+    test('leading/trailing underscores in query degrade to a token clause', () => {
+        assert.deepStrictEqual(parseQueryClauses('_foo'), [{ kind: 'token', parts: ['foo'] }]);
+        assert.deepStrictEqual(parseQueryClauses('foo_'), [{ kind: 'token', parts: ['foo'] }]);
+        assert.deepStrictEqual(parseQueryClauses('__'), []);
     });
 });
