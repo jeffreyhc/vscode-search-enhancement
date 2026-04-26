@@ -1,9 +1,11 @@
 import * as assert from 'assert';
 import * as path from 'path';
 import {
+    DEFAULT_DEBOUNCE_TIME_MS,
     DEFAULT_TAGS_FILE_PATH_TEMPLATE,
     decideTagsFilePathMigration,
     dedupeSymbolsByIdentity,
+    deriveConfigChangeEffect,
     normalizeTagsFilePathTemplates,
     pickInitialTagsFilePathTemplates,
     pickLegacyPathConfigScope,
@@ -215,5 +217,61 @@ suite('Tags Migration Decision', () => {
             paths: ['${workspaceFolder}/ws.tags'],
             scope: 'workspace'
         });
+    });
+});
+
+suite('Config Change Effect', () => {
+    function makeEvent(affected: string[]) {
+        return {
+            affectsConfiguration: (key: string) => affected.includes(key)
+        };
+    }
+
+    function makeConfig(values: Record<string, unknown>) {
+        return {
+            get<T>(key: string, defaultValue: T): T {
+                return (key in values ? (values[key] as unknown as T) : defaultValue);
+            }
+        };
+    }
+
+    test('returns empty object when neither setting affected', () => {
+        const effect = deriveConfigChangeEffect(
+            makeEvent(['unrelated.setting']),
+            makeConfig({ debounceTime: 1000, tagsFilePaths: ['x'] })
+        );
+        assert.deepStrictEqual(effect, {});
+    });
+
+    test('returns only debounceTime when only debounceTime affected', () => {
+        const effect = deriveConfigChangeEffect(
+            makeEvent(['searchEnhancement.debounceTime']),
+            makeConfig({ debounceTime: 1000, tagsFilePaths: ['x'] })
+        );
+        assert.deepStrictEqual(effect, { debounceTime: 1000 });
+    });
+
+    test('returns only tagsFilePaths when only tagsFilePaths affected', () => {
+        const effect = deriveConfigChangeEffect(
+            makeEvent(['searchEnhancement.tagsFilePaths']),
+            makeConfig({ debounceTime: 1000, tagsFilePaths: ['${workspaceFolder}/a.tags'] })
+        );
+        assert.deepStrictEqual(effect, { tagsFilePaths: ['${workspaceFolder}/a.tags'] });
+    });
+
+    test('returns both when both settings affected', () => {
+        const effect = deriveConfigChangeEffect(
+            makeEvent(['searchEnhancement.debounceTime', 'searchEnhancement.tagsFilePaths']),
+            makeConfig({ debounceTime: 250, tagsFilePaths: ['x.tags'] })
+        );
+        assert.deepStrictEqual(effect, { debounceTime: 250, tagsFilePaths: ['x.tags'] });
+    });
+
+    test('falls back to defaults when affected setting has no stored value', () => {
+        const effect = deriveConfigChangeEffect(
+            makeEvent(['searchEnhancement.debounceTime', 'searchEnhancement.tagsFilePaths']),
+            makeConfig({})
+        );
+        assert.deepStrictEqual(effect, { debounceTime: DEFAULT_DEBOUNCE_TIME_MS, tagsFilePaths: [] });
     });
 });

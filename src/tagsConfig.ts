@@ -15,6 +15,13 @@ export type MigrationDecision =
     | { kind: 'no-op'; paths: string[] }
     | { kind: 'initialize'; paths: string[]; scope: LegacyPathConfigScope };
 
+export interface ConfigChangeEffect {
+    debounceTime?: number;
+    tagsFilePaths?: string[];
+}
+
+export const DEFAULT_DEBOUNCE_TIME_MS = 600;
+
 interface SymbolIdentity {
     name: string;
     file: string;
@@ -121,6 +128,22 @@ export function decideTagsFilePathMigration(
         paths: resolvedPaths,
         scope: pickLegacyPathConfigScope(legacyInspect)
     };
+}
+
+export function deriveConfigChangeEffect(
+    event: { affectsConfiguration: (key: string) => boolean },
+    config: { get: <T>(key: string, defaultValue: T) => T }
+): ConfigChangeEffect {
+    const effect: ConfigChangeEffect = {};
+
+    if (event.affectsConfiguration('searchEnhancement.debounceTime')) {
+        effect.debounceTime = config.get<number>('debounceTime', DEFAULT_DEBOUNCE_TIME_MS);
+    }
+    if (event.affectsConfiguration('searchEnhancement.tagsFilePaths')) {
+        effect.tagsFilePaths = config.get<string[]>('tagsFilePaths', []);
+    }
+
+    return effect;
 }
 
 export function dedupeSymbolsByIdentity<T extends SymbolIdentity>(symbols: T[]): T[] {

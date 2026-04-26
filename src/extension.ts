@@ -3,9 +3,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { matchesAllClauses, parseQueryClauses } from './searchMatcher';
 import {
+    DEFAULT_DEBOUNCE_TIME_MS,
     LegacyPathConfigScope,
     decideTagsFilePathMigration,
     dedupeSymbolsByIdentity,
+    deriveConfigChangeEffect,
     resolveTagsFilePaths
 } from './tagsConfig';
 
@@ -50,7 +52,7 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
 
     // 讀取設定
     private config = vscode.workspace.getConfiguration("searchEnhancement");
-    private debounceTime = this.config.get<number>("debounceTime", 600);
+    private debounceTime = this.config.get<number>("debounceTime", DEFAULT_DEBOUNCE_TIME_MS);
     private tagsFilePathsConfig = this.config.get<string[]>("tagsFilePaths", []);
 
     constructor(private readonly _extensionUri: vscode.Uri,
@@ -67,13 +69,18 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
 
         webviewView.webview.html = this.getHtmlForWebview(webviewView.webview);
 
-        // 監聽設定變更，讓 debounceTime 和 tagsFilePath 即時更新
+        // 監聽設定變更，讓 debounceTime 和 tagsFilePaths 即時生效
         vscode.workspace.onDidChangeConfiguration(event => {
-            if (event.affectsConfiguration("searchEnhancement.debounceTime")) {
-                this.debounceTime = vscode.workspace.getConfiguration("searchEnhancement").get<number>("debounceTime", 600);
+            const effect = deriveConfigChangeEffect(
+                event,
+                vscode.workspace.getConfiguration("searchEnhancement")
+            );
+            if (effect.debounceTime !== undefined) {
+                this.debounceTime = effect.debounceTime;
+                webviewView.webview.postMessage({ command: 'updateDebounceTime', value: effect.debounceTime });
             }
-            if (event.affectsConfiguration("searchEnhancement.tagsFilePaths")) {
-                this.tagsFilePathsConfig = vscode.workspace.getConfiguration("searchEnhancement").get<string[]>("tagsFilePaths", []);
+            if (effect.tagsFilePaths !== undefined) {
+                this.tagsFilePathsConfig = effect.tagsFilePaths;
             }
         });
 
@@ -295,7 +302,7 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                         };
                     }
 
-                    const debouncedSearch = debounce(() => {
+                    function performSearch() {
                         const query = searchInput.value.trim();
                         if (query) {
                             statusDiv.textContent = \`正在搜尋 "\${query}"...\`;
@@ -304,9 +311,11 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                             statusDiv.textContent = '';
                             resultsList.innerHTML = '';
                         }
-                    }, ${this.debounceTime});
+                    }
 
-                    searchInput.addEventListener('input', debouncedSearch);
+                    let debouncedSearch = debounce(performSearch, ${this.debounceTime});
+
+                    searchInput.addEventListener('input', () => debouncedSearch());
 
                     toggleButton.addEventListener("click", () => {
                         isPartialMatchEnabled = !isPartialMatchEnabled;
@@ -326,6 +335,9 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                     window.addEventListener('message', event => {
                         const message = event.data;
                         switch (message.command) {
+                            case 'updateDebounceTime':
+                                debouncedSearch = debounce(performSearch, message.value);
+                                break;
                             case 'updateResults':
                                 const results = message.results;
                                 const query = message.query;
