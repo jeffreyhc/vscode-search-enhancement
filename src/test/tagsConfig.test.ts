@@ -2,9 +2,11 @@ import * as assert from 'assert';
 import * as path from 'path';
 import {
     DEFAULT_TAGS_FILE_PATH_TEMPLATE,
+    decideTagsFilePathMigration,
     dedupeSymbolsByIdentity,
     normalizeTagsFilePathTemplates,
     pickInitialTagsFilePathTemplates,
+    pickLegacyPathConfigScope,
     resolveTagsFilePaths
 } from '../tagsConfig';
 
@@ -127,5 +129,91 @@ suite('Tags Config', () => {
 
     test('resolveTagsFilePaths returns empty array when no templates provided', () => {
         assert.deepStrictEqual(resolveTagsFilePaths([], path.resolve('workspace-root')), []);
+    });
+});
+
+suite('Tags Migration Decision', () => {
+    test('pickLegacyPathConfigScope returns workspaceFolder when workspaceFolderValue present', () => {
+        assert.strictEqual(
+            pickLegacyPathConfigScope({ workspaceFolderValue: '${workspaceFolder}/x.tags' }),
+            'workspaceFolder'
+        );
+    });
+
+    test('pickLegacyPathConfigScope returns workspace when only workspaceValue present', () => {
+        assert.strictEqual(
+            pickLegacyPathConfigScope({ workspaceValue: '${workspaceFolder}/x.tags' }),
+            'workspace'
+        );
+    });
+
+    test('pickLegacyPathConfigScope returns global when only globalValue present', () => {
+        assert.strictEqual(
+            pickLegacyPathConfigScope({ globalValue: '${workspaceFolder}/x.tags' }),
+            'global'
+        );
+    });
+
+    test('pickLegacyPathConfigScope falls back to workspaceFolder when nothing set', () => {
+        assert.strictEqual(pickLegacyPathConfigScope(undefined), 'workspaceFolder');
+        assert.strictEqual(pickLegacyPathConfigScope({}), 'workspaceFolder');
+    });
+
+    test('decideTagsFilePathMigration is no-op when current paths already set', () => {
+        const decision = decideTagsFilePathMigration(
+            [' ${workspaceFolder}/a.tags ', '${workspaceFolder}/a.tags', '${workspaceFolder}/b.tags'],
+            { defaultValue: DEFAULT_TAGS_FILE_PATH_TEMPLATE }
+        );
+        assert.deepStrictEqual(decision, {
+            kind: 'no-op',
+            paths: ['${workspaceFolder}/a.tags', '${workspaceFolder}/b.tags']
+        });
+    });
+
+    test('decideTagsFilePathMigration initializes from custom legacy value', () => {
+        const decision = decideTagsFilePathMigration(
+            [],
+            {
+                workspaceFolderValue: '${workspaceFolder}/custom.tags',
+                defaultValue: DEFAULT_TAGS_FILE_PATH_TEMPLATE
+            }
+        );
+        assert.deepStrictEqual(decision, {
+            kind: 'initialize',
+            paths: ['${workspaceFolder}/custom.tags'],
+            scope: 'workspaceFolder'
+        });
+    });
+
+    test('decideTagsFilePathMigration uses default when legacy value equals default', () => {
+        const decision = decideTagsFilePathMigration(
+            [],
+            { globalValue: DEFAULT_TAGS_FILE_PATH_TEMPLATE, defaultValue: DEFAULT_TAGS_FILE_PATH_TEMPLATE }
+        );
+        assert.deepStrictEqual(decision, {
+            kind: 'initialize',
+            paths: [DEFAULT_TAGS_FILE_PATH_TEMPLATE],
+            scope: 'global'
+        });
+    });
+
+    test('decideTagsFilePathMigration is no-op on fresh install with no legacy value', () => {
+        const decision = decideTagsFilePathMigration([], undefined);
+        assert.deepStrictEqual(decision, {
+            kind: 'no-op',
+            paths: [DEFAULT_TAGS_FILE_PATH_TEMPLATE]
+        });
+    });
+
+    test('decideTagsFilePathMigration assigns workspace scope from legacy workspaceValue', () => {
+        const decision = decideTagsFilePathMigration(
+            [],
+            { workspaceValue: '${workspaceFolder}/ws.tags', defaultValue: DEFAULT_TAGS_FILE_PATH_TEMPLATE }
+        );
+        assert.deepStrictEqual(decision, {
+            kind: 'initialize',
+            paths: ['${workspaceFolder}/ws.tags'],
+            scope: 'workspace'
+        });
     });
 });

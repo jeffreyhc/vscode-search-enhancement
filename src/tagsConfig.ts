@@ -2,6 +2,19 @@ import * as path from 'path';
 
 export const DEFAULT_TAGS_FILE_PATH_TEMPLATE = '${workspaceFolder}/.tags';
 
+export type LegacyPathConfigScope = 'workspaceFolder' | 'workspace' | 'global';
+
+export interface LegacyPathInspect {
+    workspaceFolderValue?: string;
+    workspaceValue?: string;
+    globalValue?: string;
+    defaultValue?: string;
+}
+
+export type MigrationDecision =
+    | { kind: 'no-op'; paths: string[] }
+    | { kind: 'initialize'; paths: string[]; scope: LegacyPathConfigScope };
+
 interface SymbolIdentity {
     name: string;
     file: string;
@@ -61,6 +74,53 @@ export function resolveTagsFilePaths(pathTemplates: string[], rootPath: string):
     }
 
     return resolvedPaths;
+}
+
+export function pickLegacyPathConfigScope(inspected: LegacyPathInspect | undefined): LegacyPathConfigScope {
+    if (inspected?.workspaceFolderValue !== undefined) {
+        return 'workspaceFolder';
+    }
+    if (inspected?.workspaceValue !== undefined) {
+        return 'workspace';
+    }
+    if (inspected?.globalValue !== undefined) {
+        return 'global';
+    }
+    return 'workspaceFolder';
+}
+
+export function decideTagsFilePathMigration(
+    currentPaths: string[],
+    legacyInspect: LegacyPathInspect | undefined
+): MigrationDecision {
+    const normalizedCurrent = normalizeTagsFilePathTemplates(currentPaths);
+    if (normalizedCurrent.length > 0) {
+        return { kind: 'no-op', paths: normalizedCurrent };
+    }
+
+    const legacyValue =
+        legacyInspect?.workspaceFolderValue ??
+        legacyInspect?.workspaceValue ??
+        legacyInspect?.globalValue;
+
+    const resolvedPaths = pickInitialTagsFilePathTemplates(
+        normalizedCurrent,
+        legacyValue,
+        legacyInspect?.defaultValue
+    );
+
+    // Fresh install with no legacy value → run with the in-memory default
+    // without persisting anything. Avoids auto-writing user settings and
+    // sidesteps VS Code rejecting WorkspaceFolder-scope writes for this key.
+    if (legacyValue === undefined) {
+        return { kind: 'no-op', paths: resolvedPaths };
+    }
+
+    return {
+        kind: 'initialize',
+        paths: resolvedPaths,
+        scope: pickLegacyPathConfigScope(legacyInspect)
+    };
 }
 
 export function dedupeSymbolsByIdentity<T extends SymbolIdentity>(symbols: T[]): T[] {

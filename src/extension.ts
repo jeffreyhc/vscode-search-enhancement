@@ -3,9 +3,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { matchesAllClauses, parseQueryClauses } from './searchMatcher';
 import {
+    LegacyPathConfigScope,
+    decideTagsFilePathMigration,
     dedupeSymbolsByIdentity,
-    normalizeTagsFilePathTemplates,
-    pickInitialTagsFilePathTemplates,
     resolveTagsFilePaths
 } from './tagsConfig';
 
@@ -154,50 +154,27 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
         );
     }
 
-    private getConfigurationTargetForLegacyPath(
-        inspected: { workspaceFolderValue?: string; workspaceValue?: string; globalValue?: string } | undefined
-    ): vscode.ConfigurationTarget {
-        if (inspected?.workspaceFolderValue !== undefined) {
-            return vscode.ConfigurationTarget.WorkspaceFolder;
+    private toConfigurationTarget(scope: LegacyPathConfigScope): vscode.ConfigurationTarget {
+        switch (scope) {
+            case 'workspaceFolder': return vscode.ConfigurationTarget.WorkspaceFolder;
+            case 'workspace': return vscode.ConfigurationTarget.Workspace;
+            case 'global': return vscode.ConfigurationTarget.Global;
         }
-        if (inspected?.workspaceValue !== undefined) {
-            return vscode.ConfigurationTarget.Workspace;
-        }
-        if (inspected?.globalValue !== undefined) {
-            return vscode.ConfigurationTarget.Global;
-        }
-        return vscode.ConfigurationTarget.WorkspaceFolder;
     }
 
     private async ensureTagsFilePathsInitialized(workspaceFolderUri: vscode.Uri): Promise<string[]> {
         const scopedConfig = vscode.workspace.getConfiguration("searchEnhancement", workspaceFolderUri);
-        const existingPaths = normalizeTagsFilePathTemplates(scopedConfig.get<string[]>("tagsFilePaths", []));
-        if (existingPaths.length > 0) {
-            this.tagsFilePathsConfig = existingPaths;
-            return existingPaths;
-        }
-
-        const legacyInspect = scopedConfig.inspect<string>("tagsFilePath");
-        const legacyValue = legacyInspect?.workspaceFolderValue ?? legacyInspect?.workspaceValue ?? legacyInspect?.globalValue;
-        const initializedPaths = pickInitialTagsFilePathTemplates(
-            existingPaths,
-            legacyValue,
-            legacyInspect?.defaultValue
+        const decision = decideTagsFilePathMigration(
+            scopedConfig.get<string[]>("tagsFilePaths", []),
+            scopedConfig.inspect<string>("tagsFilePath")
         );
 
-        // Only persist when migrating an actual legacy value. Fresh installs run
-        // with the in-memory default to avoid auto-writing user settings (and to
-        // sidestep VS Code rejecting WorkspaceFolder-scope writes for this key).
-        if (legacyValue !== undefined) {
-            await scopedConfig.update(
-                "tagsFilePaths",
-                initializedPaths,
-                this.getConfigurationTargetForLegacyPath(legacyInspect)
-            );
+        if (decision.kind === 'initialize') {
+            await scopedConfig.update("tagsFilePaths", decision.paths, this.toConfigurationTarget(decision.scope));
         }
 
-        this.tagsFilePathsConfig = initializedPaths;
-        return initializedPaths;
+        this.tagsFilePathsConfig = decision.paths;
+        return decision.paths;
     }
 
     public focusSearchInput() {
