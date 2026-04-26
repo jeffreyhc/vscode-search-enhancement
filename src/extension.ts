@@ -466,7 +466,7 @@ interface CtagsSymbol {
  */
 export async function getSymbolsFromTags(tagsFilePath: string): Promise<CtagsSymbol[]> {
   const content = fs.readFileSync(tagsFilePath, 'utf-8');
-  const lines = content.split('\n');
+  const lines = content.split(/\r?\n/);
   const symbols: CtagsSymbol[] = [];
 
   for (const line of lines) {
