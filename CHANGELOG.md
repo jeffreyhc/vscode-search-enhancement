@@ -42,3 +42,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
   - 例如搜 `A_B_C` 會在 symbol 的 segments 中尋找連續的 `[A,B,C]`
   - Strict 模式要求 segment 完全相符；partial 模式允許 segment 內子字串比對，但仍要求連續
 - 多關鍵字 AND 語意：phrase 與 token 混用時以 AND 結合
+
+### [0.3.1] - 2026-04-30
+#### Fix
+- 修正 Windows ctags 預設輸出 CRLF 換行時，搜尋結果跳轉行號全部變 1 的 bug
+- 修正 `searchEnhancement.debounceTime` 設定變更後不會即時生效的 bug，現在無需重新載入 webview
+#### Improve
+- 新增 P0 / P1 單元測試與 fresh-install migration 的 e2e regression test，覆蓋 searchMatcher / tagsConfig / getSymbolsFromTags（共 46 個 case）
+- Refactor：把 tagsFilePath migration 決策邏輯抽出為純函式，方便維護與測試
