@@ -32,3 +32,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 #### Update
 - Readme.md:
   - 修改Requirements的文字說明，把用法寫得更清楚一點
+
+### [0.3.0] - 2026-04-30
+#### Add
+- 支援使用多個 .tags 檔案 (Issue #4)
+  - 新增 `searchEnhancement.tagsFilePaths` 設定（string array）
+  - 既有的 `searchEnhancement.tagsFilePath` 已標記為 deprecated；若使用者自訂過 legacy 值，第一次使用時會自動 migrate 到 `tagsFilePaths`
+- 搜尋字串含底線時的 phrase 比對 (Issue #7)
+  - 例如搜 `A_B_C` 會在 symbol 的 segments 中尋找連續的 `[A,B,C]`
+  - Strict 模式要求 segment 完全相符；partial 模式允許 segment 內子字串比對，但仍要求連續
+- 多關鍵字 AND 語意：phrase 與 token 混用時以 AND 結合

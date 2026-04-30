@@ -185,11 +185,16 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
             legacyInspect?.defaultValue
         );
 
-        await scopedConfig.update(
-            "tagsFilePaths",
-            initializedPaths,
-            this.getConfigurationTargetForLegacyPath(legacyInspect)
-        );
+        // Only persist when migrating an actual legacy value. Fresh installs run
+        // with the in-memory default to avoid auto-writing user settings (and to
+        // sidestep VS Code rejecting WorkspaceFolder-scope writes for this key).
+        if (legacyValue !== undefined) {
+            await scopedConfig.update(
+                "tagsFilePaths",
+                initializedPaths,
+                this.getConfigurationTargetForLegacyPath(legacyInspect)
+            );
+        }
 
         this.tagsFilePathsConfig = initializedPaths;
         return initializedPaths;
