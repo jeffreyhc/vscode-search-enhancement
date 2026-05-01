@@ -10,7 +10,7 @@ import {
     pickInitialTagsFilePathTemplates,
     pickLegacyPathConfigScope,
     resolveTagsFilePaths
-} from '../tagsConfig';
+} from '../../tagsConfig';
 
 suite('Tags Config', () => {
     test('uses legacy custom value when tagsFilePaths is empty', () => {

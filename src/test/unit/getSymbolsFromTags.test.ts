@@ -58,8 +58,8 @@ function loadGetSymbolsFromTags(): (tagsFilePath: string) => Promise<ParsedSymbo
     };
 
     try {
-        delete req.cache[req.resolve('../extension')];
-        const extension = req('../extension') as {
+        delete req.cache[req.resolve('../../extension')];
+        const extension = req('../../extension') as {
             getSymbolsFromTags: (tagsFilePath: string) => Promise<ParsedSymbol[]>;
         };
         return extension.getSymbolsFromTags;

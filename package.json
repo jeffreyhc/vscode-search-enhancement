@@ -99,7 +99,9 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "mocha --ui tdd out/test/unit/**/*.test.js",
+    "test:integration": "vscode-test"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",

@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { decideTagsFilePathMigration } from '../tagsConfig';
+import { decideTagsFilePathMigration } from '../../tagsConfig';
 
 /**
  * E2E reproduction for the fresh-install migration bug introduced in 3fe0be0.

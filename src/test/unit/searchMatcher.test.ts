@@ -4,7 +4,7 @@ import {
     matchesPhrase,
     normalizeSymbolSegments,
     parseQueryClauses
-} from '../searchMatcher';
+} from '../../searchMatcher';
 
 suite('Search Matcher', () => {
     test('strict token search matches A_B_D_C_F and A_B_C_F_Q for A B C', () => {
