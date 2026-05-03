@@ -1,6 +1,6 @@
 [English](README.md) | **繁體中文**
 
-![search-enhancement banner](resource/banner/search-enhancement-banner.svg)
+![search-enhancement banner](resource/banner/search-enhancement-banner.png)
 
 # search-enhancement
 
