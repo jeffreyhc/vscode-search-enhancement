@@ -12,6 +12,10 @@
     "Other"
   ],
   "icon": "resource/icons/search.png",
+  "galleryBanner": {
+    "color": "#1e1e38",
+    "theme": "dark"
+  },
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {

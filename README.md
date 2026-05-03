@@ -1,10 +1,14 @@
+**English** | [繁體中文](README.zh-TW.md)
+
+![search-enhancement banner](resource/banner/search-enhancement-banner.svg)
+
 # search-enhancement
 
-search-enhancement 是用於加強vscode的搜尋方式的擴充套件
+A VS Code extension that enhances built-in search with multi-keyword symbol matching backed by [Universal Ctags](https://github.com/universal-ctags/ctags).
 
 ## Features
 
-使用者可以在搜尋欄輸入要搜尋的關鍵字，關鍵字之間可以用空白隔開，搜尋結果會是包含全部關鍵字的symbol (不論關鍵字的先後順序)。並且提供partial match mode，只要提供的關鍵字部分符合就能找到相關symbol。
+Type space-separated keywords in the search box. Results are symbols whose name contains **all** keywords, regardless of the order you typed them. A *partial match* mode is also available — turn it on and any symbol whose name *partially* contains each keyword will surface.
 
 ![start to use](/resource/screenshots/start_to_use.png "start to use")
 
@@ -22,47 +26,64 @@ search-enhancement 是用於加強vscode的搜尋方式的擴充套件
 
 ## Installation
 
-1. 下載並安裝 [Visual Studio Code](https://code.visualstudio.com/) (需要v1.96(含)之後的版本)
-2. 在VS Code中的延伸模組Marketplace搜尋search-enhancement以安裝
+1. Install [Visual Studio Code](https://code.visualstudio.com/) v1.96 or newer
+2. Search for `search-enhancement` in the Marketplace and install
 
 ## Requirements
-這個擴充套件使用前需要先做前置設定:
-1. 對資料夾建立workspace
-2. 使用[Ctags](https://github.com/universal-ctags/ctags)建立symbol list:
-   1. 請根據使用平台選擇對應的release版本下載:
-      1. [Windows](https://github.com/universal-ctags/ctags-win32/tags)
-      2. [Linux](https://github.com/universal-ctags/ctags-nightly-build/tags)
-      3. [Mac](https://formulae.brew.sh/formula/universal-ctags)
-   2. 下載後在workspace根目錄執行`ctags -R --languages=C,C++ --fields=+n --extras=+q -f .tags` (建議可將ctag資料夾加入path環境變數方便呼叫)
+
+The extension reads from a Ctags-generated symbol index. Set it up before first use:
+
+1. Open a folder as a workspace
+2. Install [Universal Ctags](https://github.com/universal-ctags/ctags). Pre-built binaries:
+   - [Windows](https://github.com/universal-ctags/ctags-win32/tags)
+   - [Linux](https://github.com/universal-ctags/ctags-nightly-build/tags)
+   - [macOS](https://formulae.brew.sh/formula/universal-ctags)
+3. From the workspace root, generate the index:
+   ```sh
+   ctags -R --languages=C,C++ --fields=+n --extras=+q -f .tags
+   ```
+   Adding the ctags directory to `PATH` makes this easier to re-run.
 
 ## Usage
 
-1. 按 `Ctrl` + `Shift` + `P` 叫出命令欄並輸入 `Search Symbols by Keywords` 或滑鼠先在主要編輯區點一下後按下`Ctrl` + `Alt` + `F`，兩個方法都可以叫出Search Enhancement功能，預設會先出現在主要側邊欄，建議可以把圖標拉往次要側邊欄喔
-2. 在搜尋框輸入要搜尋的關鍵字，關鍵字之間可以用空白隔開
-3. 搜尋結果會顯示在側邊欄中，點擊結果可以打開對應的文件並跳到對應行數
-4. 由於跳轉的位置取決於Ctags建立的symbol list，請記得定期更新symbol list以獲得最好的使用體驗
-
-## Contributing
-
-歡迎貢獻代碼、報告問題和提交功能請求。請參閱 [Contributing.md](Contributing.md) 了解更多資訊。
-
-## Developing
-- `npm install`
-- `npm run compile`
-- `F5` to start debugging
-
-## License
-
-此專案採用 [MIT](LICENSE) 授權條款。
-
-## 致謝
-
-圖標來源於 [SVG Repo](https://www.svgrepo.com/)
+1. Press `Ctrl` + `Shift` + `P` and run **Search Symbols by Keywords**, or focus the editor and press `Ctrl` + `Alt` + `F`. The search panel opens in the primary side bar (you can drag its icon to the secondary side bar).
+2. Type space-separated keywords in the search box.
+3. Click any result to open the file at the matching line.
+4. Re-run ctags whenever your code changes — line numbers depend on the index being current.
 
 ## Tags File Configuration
 
-- Primary setting: `searchEnhancement.tagsFilePaths` (string array).
-- When `tagsFilePaths` is empty, the extension initializes `tagsFilePaths[0]` automatically:
-  - If legacy `searchEnhancement.tagsFilePath` has a non-default custom value, it migrates that value.
-  - Otherwise it uses the default `${workspaceFolder}/.tags`.
+- Primary setting: `searchEnhancement.tagsFilePaths` (string array). Supports multiple `.tags` files.
+- When `tagsFilePaths` is empty:
+  - If legacy `searchEnhancement.tagsFilePath` has a custom value, it is migrated into `tagsFilePaths[0]` and written to your settings.
+  - Otherwise the extension runs with the default `${workspaceFolder}/.tags` in memory **without modifying any settings file**.
 - Legacy `searchEnhancement.tagsFilePath` is deprecated and retained only for migration compatibility.
+
+## Contributing
+
+Contributions, bug reports and feature requests are welcome. See [Contributing.md](Contributing.md) for details.
+
+## Developing
+
+```sh
+npm install
+npm run compile
+```
+
+Press `F5` in VS Code to launch a development host with the extension loaded.
+
+Tests:
+
+```sh
+npm test                  # unit + integration
+npm run test:unit         # unit only — runs in plain Node, no VS Code needed
+npm run test:integration  # e2e against a real VS Code instance
+```
+
+## License
+
+This project is licensed under the [MIT](License) license.
+
+## Acknowledgements
+
+Icon adapted from [SVG Repo](https://www.svgrepo.com/).

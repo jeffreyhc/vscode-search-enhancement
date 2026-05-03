@@ -1,0 +1,226 @@
+<svg id="banner" width="1280" height="640" viewBox="0 0 1280 640" xmlns="http://www.w3.org/2000/svg" style="max-width:100%; border-radius:16px; display:block;" data-src-loc="1204:1364:13301" data-om-id="51438b89:7">
+  <defs data-src-loc="1367:1373:3359" data-om-id="51438b89:8">
+    <radialGradient id="b-bg" cx="30%" cy="40%" r="80%" data-src-loc="1378:1430:1548" data-om-id="51438b89:9">
+      <stop offset="0%" stop-color="#1e1e38" data-src-loc="1437:1477" data-om-id="nc:1437"/>
+      <stop offset="100%" stop-color="#0c0c18" data-src-loc="1484:1526" data-om-id="nc:1484"/>
+    </radialGradient>
+    <radialGradient id="b-glow1" cx="50%" cy="50%" r="50%" data-src-loc="1553:1608:1763" data-om-id="51438b89:10">
+      <stop offset="0%" stop-color="#3a4fbb" stop-opacity="0.35" data-src-loc="1615:1675" data-om-id="nc:1615"/>
+      <stop offset="100%" stop-color="#3a4fbb" stop-opacity="0" data-src-loc="1682:1741" data-om-id="nc:1682"/>
+    </radialGradient>
+    <radialGradient id="b-glow2" cx="50%" cy="50%" r="50%" data-src-loc="1768:1823:1978" data-om-id="51438b89:11">
+      <stop offset="0%" stop-color="#8855cc" stop-opacity="0.25" data-src-loc="1830:1890" data-om-id="nc:1830"/>
+      <stop offset="100%" stop-color="#8855cc" stop-opacity="0" data-src-loc="1897:1956" data-om-id="nc:1897"/>
+    </radialGradient>
+    <linearGradient id="b-ring" x1="0%" y1="0%" x2="100%" y2="100%" data-src-loc="1983:2047:2165" data-om-id="51438b89:12">
+      <stop offset="0%" stop-color="#7c93e8" data-src-loc="2054:2094" data-om-id="nc:2054"/>
+      <stop offset="100%" stop-color="#a97de8" data-src-loc="2101:2143" data-om-id="nc:2101"/>
+    </linearGradient>
+    <linearGradient id="b-handle" x1="0%" y1="0%" x2="100%" y2="100%" data-src-loc="2170:2236:2354" data-om-id="51438b89:13">
+      <stop offset="0%" stop-color="#6b80d6" data-src-loc="2243:2283" data-om-id="nc:2243"/>
+      <stop offset="100%" stop-color="#9060cc" data-src-loc="2290:2332" data-om-id="nc:2290"/>
+    </linearGradient>
+    <radialGradient id="b-glass" cx="35%" cy="30%" r="65%" data-src-loc="2359:2414:2532" data-om-id="51438b89:14">
+      <stop offset="0%" stop-color="#2e3d72" data-src-loc="2421:2461" data-om-id="nc:2421"/>
+      <stop offset="100%" stop-color="#161f3e" data-src-loc="2468:2510" data-om-id="nc:2468"/>
+    </radialGradient>
+    <linearGradient id="b-title" x1="0%" y1="0%" x2="100%" y2="0%" data-src-loc="2537:2600:2766" data-om-id="51438b89:15">
+      <stop offset="0%" stop-color="#c0ceff" data-src-loc="2607:2647" data-om-id="nc:2607"/>
+      <stop offset="60%" stop-color="#d0baff" data-src-loc="2654:2695" data-om-id="nc:2654"/>
+      <stop offset="100%" stop-color="#a97de8" data-src-loc="2702:2744" data-om-id="nc:2702"/>
+    </linearGradient>
+    <linearGradient id="b-ui-header" x1="0%" y1="0%" x2="0%" y2="100%" data-src-loc="2771:2838:2956" data-om-id="51438b89:16">
+      <stop offset="0%" stop-color="#252540" data-src-loc="2845:2885" data-om-id="nc:2845"/>
+      <stop offset="100%" stop-color="#1a1a30" data-src-loc="2892:2934" data-om-id="nc:2892"/>
+    </linearGradient>
+    <filter id="b-glow-f" data-src-loc="2961:2983:3161" data-om-id="51438b89:17">
+      <feGaussianBlur stdDeviation="18" result="blur" data-src-loc="2990:3039" data-om-id="nc:2990"/>
+      <feMerge data-src-loc="3046:3055:3147" data-om-id="51438b89:18">
+        <feMergeNode in="blur" data-src-loc="3064:3088" data-om-id="nc:3064"/>
+        <feMergeNode in="SourceGraphic" data-src-loc="3097:3130" data-om-id="nc:3097"/>
+      </feMerge>
+    </filter>
+    <filter id="b-soft" data-src-loc="3166:3186:3241" data-om-id="51438b89:19">
+      <feGaussianBlur stdDeviation="6" data-src-loc="3193:3227" data-om-id="nc:3193"/>
+    </filter>
+    <clipPath id="b-ui-clip" data-src-loc="3246:3271:3349" data-om-id="51438b89:20">
+      <rect x="680" y="80" width="540" height="480" rx="12" data-src-loc="3278:3333" data-om-id="nc:3278"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="640" fill="url(#b-bg)" data-src-loc="3385:3436" data-om-id="nc:3385"/>
+
+  <!-- Noise texture via subtle dots -->
+  <rect width="1280" height="640" fill="url(#b-bg)" opacity="0.5" data-src-loc="3481:3546" data-om-id="nc:3481"/>
+
+  <!-- Glow blobs -->
+  <ellipse cx="280" cy="360" rx="320" ry="280" fill="url(#b-glow1)" data-src-loc="3572:3639" data-om-id="nc:3572"/>
+  <ellipse cx="980" cy="280" rx="260" ry="220" fill="url(#b-glow2)" data-src-loc="3642:3709" data-om-id="nc:3642"/>
+
+  <!-- Subtle grid lines -->
+  <g opacity="0.03" stroke="#8899ff" stroke-width="1" data-src-loc="3742:3794:4266" data-om-id="51438b89:21">
+    <line x1="0" y1="160" x2="1280" y2="160" data-src-loc="3799:3841" data-om-id="nc:3799"/>
+    <line x1="0" y1="320" x2="1280" y2="320" data-src-loc="3846:3888" data-om-id="nc:3846"/>
+    <line x1="0" y1="480" x2="1280" y2="480" data-src-loc="3893:3935" data-om-id="nc:3893"/>
+    <line x1="160" y1="0" x2="160" y2="640" data-src-loc="3940:3981" data-om-id="nc:3940"/>
+    <line x1="320" y1="0" x2="320" y2="640" data-src-loc="3986:4027" data-om-id="nc:3986"/>
+    <line x1="480" y1="0" x2="480" y2="640" data-src-loc="4032:4073" data-om-id="nc:4032"/>
+    <line x1="640" y1="0" x2="640" y2="640" data-src-loc="4078:4119" data-om-id="nc:4078"/>
+    <line x1="800" y1="0" x2="800" y2="640" data-src-loc="4124:4165" data-om-id="nc:4124"/>
+    <line x1="960" y1="0" x2="960" y2="640" data-src-loc="4170:4211" data-om-id="nc:4170"/>
+    <line x1="1120" y1="0" x2="1120" y2="640" data-src-loc="4216:4259" data-om-id="nc:4216"/>
+  </g>
+
+  <!-- Vertical divider -->
+  <line x1="640" y1="60" x2="640" y2="580" stroke="#8899ff" stroke-width="1" opacity="0.08" data-src-loc="4298:4389" data-om-id="nc:4298"/>
+
+  <!-- ═══════════════════════════════ LEFT SIDE ═══════════════════════════════ -->
+
+  <!-- Icon (scaled down, centered left) -->
+  <g transform="translate(100, 148) scale(0.67)" data-src-loc="4648:4695:6258" data-om-id="51438b89:22">
+    <!-- bg circle glow -->
+    <circle cx="160" cy="160" r="140" fill="#4a5fcc" opacity="0.1" filter="url(#b-soft)" data-src-loc="4728:4814" data-om-id="nc:4728"/>
+    <!-- glass fill -->
+    <circle cx="160" cy="160" r="110" fill="url(#b-glass)" data-src-loc="4843:4899" data-om-id="nc:4843"/>
+    <!-- glass ring -->
+    <circle cx="160" cy="160" r="110" fill="none" stroke="url(#b-ring)" stroke-width="22" data-src-loc="4928:5015" data-om-id="nc:4928"/>
+    <!-- handle -->
+    <line x1="243" y1="243" x2="328" y2="328" stroke="url(#b-handle)" stroke-width="38" stroke-linecap="round" data-src-loc="5040:5148" data-om-id="nc:5040"/>
+    <!-- keyword lines -->
+    <rect x="98" y="124" width="60" height="9" rx="4.5" fill="#7c93e8" opacity="0.9" data-src-loc="5180:5262" data-om-id="nc:5180"/>
+    <rect x="166" y="124" width="36" height="9" rx="4.5" fill="#4a5fcc" opacity="0.5" data-src-loc="5267:5350" data-om-id="nc:5267"/>
+    <rect x="98" y="145" width="28" height="9" rx="4.5" fill="#4a5fcc" opacity="0.4" data-src-loc="5355:5437" data-om-id="nc:5355"/>
+    <rect x="134" y="145" width="55" height="9" rx="4.5" fill="#a97de8" opacity="0.85" data-src-loc="5442:5526" data-om-id="nc:5442"/>
+    <rect x="98" y="166" width="70" height="9" rx="4.5" fill="#4a5fcc" opacity="0.4" data-src-loc="5531:5613" data-om-id="nc:5531"/>
+    <rect x="98" y="187" width="42" height="9" rx="4.5" fill="#7c93e8" opacity="0.7" data-src-loc="5618:5700" data-om-id="nc:5618"/>
+    <!-- plus badge -->
+    <circle cx="258" cy="82" r="26" fill="#12122a" stroke="url(#b-ring)" stroke-width="3" data-src-loc="5729:5816" data-om-id="nc:5729"/>
+    <line x1="247" y1="82" x2="269" y2="82" stroke="#c09af0" stroke-width="4.5" stroke-linecap="round" data-src-loc="5821:5921" data-om-id="nc:5821"/>
+    <line x1="258" y1="71" x2="258" y2="93" stroke="#c09af0" stroke-width="4.5" stroke-linecap="round" data-src-loc="5926:6026" data-om-id="nc:5926"/>
+    <!-- sparkles -->
+    <circle cx="290" cy="52" r="4" fill="#a97de8" opacity="0.7" data-src-loc="6053:6114" data-om-id="nc:6053"/>
+    <circle cx="308" cy="40" r="2.5" fill="#7c93e8" opacity="0.5" data-src-loc="6119:6182" data-om-id="nc:6119"/>
+    <circle cx="320" cy="60" r="3.5" fill="#c09af0" opacity="0.55" data-src-loc="6187:6251" data-om-id="nc:6187"/>
+  </g>
+
+  <!-- Title -->
+  <text x="112" y="414" font-family="'Inter', sans-serif" font-weight="700" font-size="46" fill="url(#b-title)" letter-spacing="-1" data-src-loc="6279:6409:6434" data-om-id="51438b89:23">search-enhancement</text>
+
+  <!-- Subtitle -->
+  <text x="114" y="454" font-family="'Inter', sans-serif" font-weight="400" font-size="18" fill="#8899cc" letter-spacing="0.01em" data-src-loc="6458:6586:6641" data-om-id="51438b89:24">VS Code Extension · Multi-keyword Symbol Search</text>
+
+  <!-- Feature chips -->
+  <!-- Chip 1 -->
+  <rect x="114" y="480" width="150" height="32" rx="16" fill="#1e2248" stroke="#3a4aaa" stroke-width="1.5" data-src-loc="6688:6794" data-om-id="nc:6688"/>
+  <text x="189" y="501" font-family="'JetBrains Mono', monospace" font-size="12" fill="#7c93e8" text-anchor="middle" letter-spacing="0.02em" data-src-loc="6797:6936:6956" data-om-id="51438b89:25">Multi-keyword</text>
+
+  <!-- Chip 2 -->
+  <rect x="274" y="480" width="148" height="32" rx="16" fill="#221e48" stroke="#6a3aaa" stroke-width="1.5" data-src-loc="6978:7084" data-om-id="nc:6978"/>
+  <text x="348" y="501" font-family="'JetBrains Mono', monospace" font-size="12" fill="#a97de8" text-anchor="middle" letter-spacing="0.02em" data-src-loc="7087:7226:7246" data-om-id="51438b89:26">Partial Match</text>
+
+  <!-- Chip 3 -->
+  <rect x="432" y="480" width="120" height="32" rx="16" fill="#1a2238" stroke="#2a5aaa" stroke-width="1.5" data-src-loc="7268:7374" data-om-id="nc:7268"/>
+  <text x="492" y="501" font-family="'JetBrains Mono', monospace" font-size="12" fill="#6699dd" text-anchor="middle" letter-spacing="0.02em" data-src-loc="7377:7516:7528" data-om-id="51438b89:27">Ctags</text>
+
+  <!-- ═══════════════════════════════ RIGHT SIDE — Mock UI ═══════════════════════════════ -->
+
+  <!-- Panel shadow -->
+  <rect x="680" y="80" width="540" height="480" rx="12" fill="#0a0a16" opacity="0.6" data-src-loc="7779:7863" data-om-id="nc:7779"/>
+
+  <!-- Panel background -->
+  <rect x="690" y="90" width="530" height="460" rx="10" fill="#12122a" clip-path="url(#b-ui-clip)" data-src-loc="7895:7993" data-om-id="nc:7895"/>
+
+  <!-- Panel header bar -->
+  <rect x="690" y="90" width="530" height="38" rx="0" fill="url(#b-ui-header)" data-src-loc="8025:8103" data-om-id="nc:8025"/>
+  <rect x="690" y="90" width="530" height="38" rx="10" fill="url(#b-ui-header)" data-src-loc="8106:8185" data-om-id="nc:8106"/>
+  <rect x="690" y="110" width="530" height="18" fill="url(#b-ui-header)" data-src-loc="8188:8260" data-om-id="nc:8188"/>
+
+  <!-- Header title text -->
+  <text x="716" y="114" font-family="'Inter', sans-serif" font-size="12" fill="#6677aa" letter-spacing="0.04em" data-src-loc="8293:8403:8428" data-om-id="51438b89:28">SEARCH ENHANCEMENT</text>
+
+  <!-- Traffic light dots -->
+  <circle cx="1188" cy="109" r="5" fill="#2a2a4a" data-src-loc="8462:8511" data-om-id="nc:8462"/>
+  <circle cx="1204" cy="109" r="5" fill="#2a2a4a" data-src-loc="8514:8563" data-om-id="nc:8514"/>
+
+  <!-- Search box -->
+  <rect x="706" y="142" width="498" height="36" rx="6" fill="#1c1c38" stroke="#3a4a88" stroke-width="1.5" data-src-loc="8589:8694" data-om-id="nc:8589"/>
+  <!-- search icon inside box -->
+  <circle cx="724" cy="160" r="7" fill="none" stroke="#5566aa" stroke-width="1.5" data-src-loc="8731:8812" data-om-id="nc:8731"/>
+  <line x1="729" y1="165" x2="734" y2="170" stroke="#5566aa" stroke-width="1.5" stroke-linecap="round" data-src-loc="8815:8917" data-om-id="nc:8815"/>
+  <!-- search text in box -->
+  <text x="742" y="165" font-family="'JetBrains Mono', monospace" font-size="13" fill="#8899cc" data-src-loc="8950:9044:9061" data-om-id="51438b89:29">opt tcp ms</text>
+  <!-- cursor blink -->
+  <rect x="828" y="152" width="1.5" height="16" fill="#7c93e8" opacity="0.8" data-src-loc="9088:9164" data-om-id="nc:9088"/>
+  <!-- result count -->
+  <text x="1070" y="165" font-family="'Inter', sans-serif" font-size="11" fill="#556688" data-src-loc="9191:9278:9307" data-om-id="51438b89:30">搜尋到 13 個結果</text>
+
+  <!-- Partial match badge -->
+  <rect x="990" y="148" width="72" height="20" rx="10" fill="#2a1e4a" stroke="#7c50cc" stroke-width="1" data-src-loc="9342:9445" data-om-id="nc:9342"/>
+  <text x="1026" y="162" font-family="'Inter', sans-serif" font-size="9" fill="#a97de8" text-anchor="middle" data-src-loc="9448:9555:9579" data-om-id="51438b89:31">Partial Match ✓</text>
+
+  <!-- Divider -->
+  <line x1="706" y1="188" x2="1196" y2="188" stroke="#2a2a48" stroke-width="1" data-src-loc="9602:9680" data-om-id="nc:9602"/>
+
+  <!-- Result rows -->
+  <!-- each row: filename right-aligned, symbol name left, line number -->
+
+  <!-- Row highlight (active) -->
+  <rect x="706" y="192" width="498" height="28" rx="4" fill="#1e2248" opacity="0.9" data-src-loc="9817:9900" data-om-id="nc:9817"/>
+
+  <!-- Rows data -->
+  <!-- 1 highlighted -->
+  <text x="720" y="210" font-family="'JetBrains Mono', monospace" font-size="12" fill="#7c93e8" data-src-loc="9950:10044:10071" data-om-id="51438b89:32">TCP_BUILD_MSS_OPTION</text>
+  <text x="1160" y="210" font-family="'JetBrains Mono', monospace" font-size="11" fill="#445577" text-anchor="end" data-src-loc="10074:10187:10199" data-om-id="51438b89:33">tcp.h</text>
+
+  <text x="720" y="238" font-family="'JetBrains Mono', monospace" font-size="12" fill="#ccd4f0" opacity="0.75" data-src-loc="10203:10312:10339" data-om-id="51438b89:34">TCP_BUILD_MSS_OPTION</text>
+  <text x="1160" y="238" font-family="'JetBrains Mono', monospace" font-size="11" fill="#445577" text-anchor="end" data-src-loc="10342:10455:10472" data-om-id="51438b89:35">tcp_impl.h</text>
+
+  <text x="720" y="264" font-family="'JetBrains Mono', monospace" font-size="12" fill="#ccd4f0" opacity="0.75" data-src-loc="10476:10585:10603" data-om-id="51438b89:36">TCP_OPT_MSS</text>
+  <text x="1160" y="264" font-family="'JetBrains Mono', monospace" font-size="11" fill="#445577" text-anchor="end" data-src-loc="10606:10719:10743" data-om-id="51438b89:37">FreeRTOS_TCP_IP.c</text>
+
+  <text x="720" y="290" font-family="'JetBrains Mono', monospace" font-size="12" fill="#ccd4f0" opacity="0.65" data-src-loc="10747:10856:10874" data-om-id="51438b89:38">TCP_OPT_MSS</text>
+  <text x="1160" y="290" font-family="'JetBrains Mono', monospace" font-size="11" fill="#445577" text-anchor="end" data-src-loc="10877:10990:11002" data-om-id="51438b89:39">uip.c</text>
+
+  <text x="720" y="316" font-family="'JetBrains Mono', monospace" font-size="12" fill="#ccd4f0" opacity="0.55" data-src-loc="11006:11115:11133" data-om-id="51438b89:40">TCP_OPT_MSS</text>
+  <text x="1160" y="316" font-family="'JetBrains Mono', monospace" font-size="11" fill="#3a4466" text-anchor="end" data-src-loc="11136:11249:11261" data-om-id="51438b89:41">uip.c</text>
+
+  <text x="720" y="342" font-family="'JetBrains Mono', monospace" font-size="12" fill="#ccd4f0" opacity="0.45" data-src-loc="11265:11374:11396" data-om-id="51438b89:42">TCP_OPT_MSS_LEN</text>
+  <text x="1160" y="342" font-family="'JetBrains Mono', monospace" font-size="11" fill="#3a4466" text-anchor="end" data-src-loc="11399:11512:11536" data-om-id="51438b89:43">FreeRTOS_TCP_IP.c</text>
+
+  <text x="720" y="368" font-family="'JetBrains Mono', monospace" font-size="12" fill="#ccd4f0" opacity="0.38" data-src-loc="11540:11649:11671" data-om-id="51438b89:44">TCP_OPT_MSS_LEN</text>
+  <text x="1160" y="368" font-family="'JetBrains Mono', monospace" font-size="11" fill="#3a4466" text-anchor="end" data-src-loc="11674:11787:11799" data-om-id="51438b89:45">uip.c</text>
+
+  <text x="720" y="394" font-family="'JetBrains Mono', monospace" font-size="12" fill="#ccd4f0" opacity="0.30" data-src-loc="11803:11912:11934" data-om-id="51438b89:46">TCP_OPT_MSS_LEN</text>
+  <text x="1160" y="394" font-family="'JetBrains Mono', monospace" font-size="11" fill="#2e3855" text-anchor="end" data-src-loc="11937:12050:12062" data-om-id="51438b89:47">uip.c</text>
+
+  <!-- Row dividers -->
+  <g stroke="#1e1e38" stroke-width="1" opacity="0.8" data-src-loc="12090:12141:12491" data-om-id="51438b89:48">
+    <line x1="706" y1="220" x2="1196" y2="220" data-src-loc="12146:12190" data-om-id="nc:12146"/>
+    <line x1="706" y1="246" x2="1196" y2="246" data-src-loc="12195:12239" data-om-id="nc:12195"/>
+    <line x1="706" y1="272" x2="1196" y2="272" data-src-loc="12244:12288" data-om-id="nc:12244"/>
+    <line x1="706" y1="298" x2="1196" y2="298" data-src-loc="12293:12337" data-om-id="nc:12293"/>
+    <line x1="706" y1="324" x2="1196" y2="324" data-src-loc="12342:12386" data-om-id="nc:12342"/>
+    <line x1="706" y1="350" x2="1196" y2="350" data-src-loc="12391:12435" data-om-id="nc:12391"/>
+    <line x1="706" y1="376" x2="1196" y2="376" data-src-loc="12440:12484" data-om-id="nc:12440"/>
+  </g>
+
+  <!-- Fade out gradient at bottom of UI panel -->
+  <defs data-src-loc="12546:12552:12781" data-om-id="51438b89:49">
+    <linearGradient id="b-fade" x1="0%" y1="0%" x2="0%" y2="100%" data-src-loc="12557:12619:12771" data-om-id="51438b89:50">
+      <stop offset="0%" stop-color="#12122a" stop-opacity="0" data-src-loc="12626:12683" data-om-id="nc:12626"/>
+      <stop offset="100%" stop-color="#12122a" stop-opacity="1" data-src-loc="12690:12749" data-om-id="nc:12690"/>
+    </linearGradient>
+  </defs>
+  <rect x="690" y="380" width="530" height="170" fill="url(#b-fade)" data-src-loc="12784:12852" data-om-id="nc:12784"/>
+
+  <!-- Panel border glow -->
+  <rect x="690" y="90" width="530" height="460" rx="10" fill="none" stroke="#3a4a88" stroke-width="1.5" opacity="0.6" data-src-loc="12885:13002" data-om-id="nc:12885"/>
+
+  <!-- Corner accent dots -->
+  <circle cx="695" cy="95" r="3" fill="#7c93e8" opacity="0.3" data-src-loc="13036:13097" data-om-id="nc:13036"/>
+  <circle cx="1215" cy="95" r="3" fill="#a97de8" opacity="0.3" data-src-loc="13100:13162" data-om-id="nc:13100"/>
+  <circle cx="695" cy="545" r="3" fill="#7c93e8" opacity="0.2" data-src-loc="13165:13227" data-om-id="nc:13165"/>
+  <circle cx="1215" cy="545" r="3" fill="#a97de8" opacity="0.2" data-src-loc="13230:13293" data-om-id="nc:13230"/>
+
+</svg>
