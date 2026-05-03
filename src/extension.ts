@@ -123,23 +123,13 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                             const symbolGroups = await Promise.all(existingTagsFiles.map(getSymbolsFromTags));
                             const ctagsSymbols = dedupeSymbolsByIdentity(symbolGroups.flat());
 
-                            if (ctagsSymbols.length > 0) {
-                                // 取得 ctagsSymbols，然後做篩選
-                                const matchedSymbols = ctagsSymbols.filter(sym =>
-                                    matchesAllClauses(sym.name, clauses, this.isPartialMatchMode)
-                                );
+                            const matchedSymbols = ctagsSymbols.filter(sym =>
+                                matchesAllClauses(sym.name, clauses, this.isPartialMatchMode)
+                            );
 
-                                if (matchedSymbols.length > 0) {
-                                    const results = matchedSymbols.map(sym => new SearchResultItem(sym.name, sym.file, sym.line, vscode.TreeItemCollapsibleState.None));
-                                    // 同步更新 TreeView 使用的結果（如果有）
-                                    this.searchResultsProvider.refresh(results);
-                                    // 同時更新 Webview 內的結果顯示
-                                    webviewView.webview.postMessage({ command: 'updateResults', results: results, query: query });
-                                }
-                                else {
-                                    webviewView.webview.postMessage({ command: 'updateResults', results: [], query: query });
-                                }
-                            }
+                            const results = matchedSymbols.map(sym => new SearchResultItem(sym.name, sym.file, sym.line, vscode.TreeItemCollapsibleState.None));
+                            this.searchResultsProvider.refresh(results);
+                            webviewView.webview.postMessage({ command: 'updateResults', results, query });
                         }
                         break;
                     case 'openFile':
