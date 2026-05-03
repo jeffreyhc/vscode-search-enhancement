@@ -10,6 +10,7 @@ import {
     deriveConfigChangeEffect,
     resolveTagsFilePaths
 } from './tagsConfig';
+import { createTagsCache } from './tagsCache';
 
 export function activate(context: vscode.ExtensionContext) {
     // 使用 WebviewViewProvider 來註冊側邊欄中的搜尋視圖
@@ -34,6 +35,10 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
     private config = vscode.workspace.getConfiguration("searchEnhancement");
     private debounceTime = this.config.get<number>("debounceTime", DEFAULT_DEBOUNCE_TIME_MS);
     private tagsFilePathsConfig = this.config.get<string[]>("tagsFilePaths", []);
+
+    // mtime-based cache for parsed .tags files; saves re-reading large indexes
+    // on every keystroke and stays correct across user-driven ctags re-runs.
+    private symbolsCache = createTagsCache<CtagsSymbol[]>(getSymbolsFromTags);
 
     constructor(private readonly _extensionUri: vscode.Uri) { }
 
@@ -99,7 +104,7 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                                 return;
                             }
 
-                            const symbolGroups = await Promise.all(existingTagsFiles.map(getSymbolsFromTags));
+                            const symbolGroups = await Promise.all(existingTagsFiles.map(p => this.symbolsCache.get(p)));
                             const ctagsSymbols = dedupeSymbolsByIdentity(symbolGroups.flat());
 
                             const matchedSymbols = ctagsSymbols.filter(sym =>
