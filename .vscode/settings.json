@@ -7,5 +7,11 @@
 		"out": true // set this to false to include "out" folder in search results
 	},
 	// Turn off tsc task auto detection since we have the necessary tasks as npm scripts
-	"typescript.tsc.autoDetect": "off"
+	"typescript.tsc.autoDetect": "off",
+	// Use the TypeScript that ships with this repo's node_modules instead of
+	// the one bundled with VS Code. The bundled version can lag behind on
+	// resolution rules (e.g. "module": "Node16") and may incorrectly fail to
+	// see @types/node, surfacing spurious "cannot find name 'fs'" errors.
+	"typescript.tsdk": "node_modules/typescript/lib",
+	"typescript.enablePromptUseWorkspaceTsdk": true
 }
