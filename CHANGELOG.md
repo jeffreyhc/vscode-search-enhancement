@@ -50,3 +50,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 #### Improve
 - 新增 P0 / P1 單元測試與 fresh-install migration 的 e2e regression test，覆蓋 searchMatcher / tagsConfig / getSymbolsFromTags（共 46 個 case）
 - Refactor：把 tagsFilePath migration 決策邏輯抽出為純函式，方便維護與測試
+
+### [0.3.2] - 2026-05-03
+#### Fix
+- 修正搜尋結果為空時 webview 卡在「正在搜尋...」訊息不更新的 bug
+#### Improve
+- `.tags` 解析改成以 mtime 為基準的 cache，大型 index 在連續輸入關鍵字時不再重複 parse；重跑 ctags 後下一次搜尋會自動偵測並重 parse
+- 移除未實際接到任何 view 的 TreeView dead code（`SearchResultsProvider` / `SearchResultItem` 與對應的 commands、context menu）
+- 把 unit tests 跟 integration tests 拆開，unit tests 用純 mocha 跑（30ms 內），CI 改成 9 個 matrix jobs 都跑 unit、僅 Linux + Node 20 跑需要 VS Code 的 e2e
+- README.md 改為英文主版本、附加 banner 跟 Marketplace gallery 設定；繁體中文版另存於 [README.zh-TW.md](README.zh-TW.md)
