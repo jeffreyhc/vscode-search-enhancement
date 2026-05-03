@@ -12,10 +12,8 @@ import {
 } from './tagsConfig';
 
 export function activate(context: vscode.ExtensionContext) {
-    const searchResultsProvider = new SearchResultsProvider();
-
     // 使用 WebviewViewProvider 來註冊側邊欄中的搜尋視圖
-    const viewProvider = new SearchFunctionsViewProvider(context.extensionUri, searchResultsProvider);
+    const viewProvider = new SearchFunctionsViewProvider(context.extensionUri);
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(SearchFunctionsViewProvider.viewId, viewProvider)
     );
@@ -24,24 +22,6 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.executeCommand('workbench.view.extension.searchResultsContainer').then(() => {
             viewProvider.focusSearchInput();
         });
-    });
-
-    vscode.commands.registerCommand('extension.openFile', async (item: SearchResultItem) => {
-        const doc = await vscode.workspace.openTextDocument(item.filePath);
-        const editor = await vscode.window.showTextDocument(doc);
-        const line = Math.max(0, item.line - 1);
-        const position = new vscode.Position(line, 0);
-        editor.selection = new vscode.Selection(position, position);
-        editor.revealRange(new vscode.Range(position, position));
-    });
-
-    vscode.commands.registerCommand('extension.openFileInNewTab', async (item: SearchResultItem) => {
-        const doc = await vscode.workspace.openTextDocument(item.filePath);
-        const editor = await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.Beside });
-        const line = Math.max(0, item.line - 1);
-        const position = new vscode.Position(line, 0);
-        editor.selection = new vscode.Selection(position, position);
-        editor.revealRange(new vscode.Range(position, position));
     });
 }
 
@@ -55,8 +35,7 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
     private debounceTime = this.config.get<number>("debounceTime", DEFAULT_DEBOUNCE_TIME_MS);
     private tagsFilePathsConfig = this.config.get<string[]>("tagsFilePaths", []);
 
-    constructor(private readonly _extensionUri: vscode.Uri,
-                private readonly searchResultsProvider: SearchResultsProvider) { }
+    constructor(private readonly _extensionUri: vscode.Uri) { }
 
     public resolveWebviewView(
 		webviewView: vscode.WebviewView,
@@ -127,8 +106,12 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                                 matchesAllClauses(sym.name, clauses, this.isPartialMatchMode)
                             );
 
-                            const results = matchedSymbols.map(sym => new SearchResultItem(sym.name, sym.file, sym.line, vscode.TreeItemCollapsibleState.None));
-                            this.searchResultsProvider.refresh(results);
+                            const results = matchedSymbols.map(sym => ({
+                                label: sym.name,
+                                filePath: sym.file,
+                                line: sym.line,
+                                fileName: path.basename(sym.file)
+                            }));
                             webviewView.webview.postMessage({ command: 'updateResults', results, query });
                         }
                         break;
@@ -379,47 +362,6 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
         }
         return text;
     }
-}
-
-class SearchResultsProvider implements vscode.TreeDataProvider<SearchResultItem> {
-    private _onDidChangeTreeData: vscode.EventEmitter<SearchResultItem | undefined | void> = new vscode.EventEmitter<SearchResultItem | undefined | void>();
-    readonly onDidChangeTreeData: vscode.Event<SearchResultItem | undefined | void> = this._onDidChangeTreeData.event;
-
-    private results: SearchResultItem[] = [];
-
-    refresh(results: SearchResultItem[]): void {
-        this.results = results;
-        this._onDidChangeTreeData.fire();
-    }
-
-    getTreeItem(element: SearchResultItem): vscode.TreeItem {
-        return element;
-    }
-
-    getChildren(element?: SearchResultItem): Thenable<SearchResultItem[]> {
-        if (element) {
-            return Promise.resolve([]);
-        } else {
-            return Promise.resolve(this.results);
-        }
-    }
-}
-
-class SearchResultItem extends vscode.TreeItem {
-    fileName: string;
-    constructor(
-        public readonly label: string,
-        public readonly filePath: string,
-        public readonly line: number,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState
-    ) {
-        super(label, collapsibleState);
-        this.tooltip = `${this.filePath}:${this.line}`;
-        this.description = `${this.filePath}:${this.line}`;
-        this.fileName = `${path.basename(this.filePath)}`;
-    }
-
-    contextValue = 'searchResultItem';
 }
 
 /** ctags 解析後的符號資料結構，可自行擴充 */

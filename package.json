@@ -47,14 +47,6 @@
       {
         "command": "extension.searchFunctions",
         "title": "Search Symbols by Keywords"
-      },
-      {
-        "command": "extension.openFile",
-        "title": "Open File"
-      },
-      {
-        "command": "extension.openFileInNewTab",
-        "title": "Open File in New Tab"
       }
     ],
     "viewsContainers": {
@@ -72,20 +64,6 @@
           "id": "searchResultsView",
           "name": "",
           "type": "webview"
-        }
-      ]
-    },
-    "menus": {
-      "view/item/context": [
-        {
-          "command": "extension.openFile",
-          "when": "view == searchResultsView",
-          "group": "navigation"
-        },
-        {
-          "command": "extension.openFileInNewTab",
-          "when": "view == searchResultsView",
-          "group": "navigation"
         }
       ]
     },
