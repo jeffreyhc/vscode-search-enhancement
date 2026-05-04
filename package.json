@@ -39,6 +39,7 @@
             "type": "string"
           },
           "default": [],
+          "scope": "resource",
           "description": "ctags index file paths. Supports multiple .tags files."
         }
       }
