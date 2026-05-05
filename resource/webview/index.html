@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{CSP_SOURCE}} 'unsafe-inline'; script-src 'nonce-{{NONCE}}'; font-src {{CSP_SOURCE}};">
+    <title>Search Functions</title>
+    <link rel="stylesheet" href="{{CODICONS_URI}}" />
+    <style>{{STYLE}}</style>
+</head>
+<body>
+    <div id="search-container">
+        <input type="text" id="search" placeholder="請輸入關鍵字，以空格分隔" />
+        <button id="toggleSearchMode" title="Partial match mode">
+            <span class="codicon codicon-sparkle"></span>
+        </button>
+    </div>
+    <div id="status"></div>
+    <ul id="results"></ul>
+    <script nonce="{{NONCE}}">{{SCRIPT}}</script>
+</body>
+</html>

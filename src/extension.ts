@@ -172,192 +172,22 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
     private getHtmlForWebview(webview: vscode.Webview): string {
         const nonce = this.getNonce();
         const codiconsUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css'));
-        return `
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};">
-                <title>Search Functions</title>
-                <link rel="stylesheet" href="${codiconsUri}" />
-                <style>
-                    body {
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                        margin: 0;
-                        padding: 16px;
-                    }
-                    #search-container {
-                        display: flex;
-                        align-items: center;
-                        width: 100%;
-                    }
-                    #search {
-                        flex: 1;
-                        padding: 8px;
-                        box-sizing: border-box;
-                        border: 1px solid #444;
-                        background-color: #222;
-                        color: white;
-                    }
-                    #toggleSearchMode {
-                        width: 32px;
-                        height: 32px;
-                        margin-left: 5px;
-                        background-color: #333;
-                        border: 1px solid #444;
-                        color: white;
-                        cursor: pointer;
-                        transition: background-color 0.2s;
-                    }
-                    #toggleSearchMode:hover {
-                        background-color: #555;
-                    }
-                    codicon {
-                        display: flex;
-	                    align-items: center;
-                        justify-content: center;
-                        font-size: 20px;
-                    }
-                    #toggleSearchMode .codicon {
-                        color: white; /* 預設 icon 顏色 */
-                    }
-                    /* 當模式啟用時，讓按鈕有 "按下" 的狀態 */
-                    #toggleSearchMode.active {
-                        background-color: #007acc; /* VS Code 預設藍色 */
-                        border-color: #005f99;
-                    }
-                    #toggleSearchMode.active .codicon {
-                        color: yellow; /* 啟用 Partial Match Mode 時 icon 變黃 */
-                    }
-                    #toggleSearchMode:hover .codicon {
-                        color: lightgray; /* 滑鼠懸停時 icon 變淺灰 */
-                    }
-                    #status {
-                        margin-top: 8px;
-                        color: #888;
-                    }
-                    ul {
-                        list-style-type: none;
-                        padding: 0;
-                    }
-                    li {
-                        padding: 8px;
-                        border-bottom: 1px;
-                        cursor: pointer;
-                    }
-                    li:hover {
-                        background-color:rgb(70, 70, 70);
-                    }
-                </style>
-            </head>
-            <body>
-                <div id="search-container">
-                    <input type="text" id="search" placeholder="請輸入關鍵字，以空格分隔" />
-                    <button id="toggleSearchMode" title="Partial match mode">
-                        <span class="codicon codicon-sparkle"></span>
-                    </button>
-                </div>
-                <div id="status"></div>
-                <ul id="results"></ul>
-                <script nonce="${nonce}">
-                    const vscode = acquireVsCodeApi();
-                    const searchInput = document.getElementById('search');
-                    const statusDiv = document.getElementById('status');
-                    const resultsList = document.getElementById('results');
-                    const toggleButton = document.getElementById("toggleSearchMode");
 
-                    let isPartialMatchEnabled = false;
+        const webviewDir = path.join(this._extensionUri.fsPath, 'resource', 'webview');
+        const htmlTemplate = fs.readFileSync(path.join(webviewDir, 'index.html'), 'utf8');
+        const styleContent = fs.readFileSync(path.join(webviewDir, 'style.css'), 'utf8');
+        const scriptContent = applyPlaceholders(
+            fs.readFileSync(path.join(webviewDir, 'main.js'), 'utf8'),
+            { DEBOUNCE_TIME: String(this.debounceTime) }
+        );
 
-                    function debounce(func, wait) {
-                        let timeout;
-                        return function(...args) {
-                            const later = () => {
-                                clearTimeout(timeout);
-                                func(...args);
-                            };
-                            clearTimeout(timeout);
-                            timeout = setTimeout(later, wait);
-                        };
-                    }
-
-                    function performSearch() {
-                        const query = searchInput.value.trim();
-                        if (query) {
-                            statusDiv.textContent = \`正在搜尋 "\${query}"...\`;
-                            vscode.postMessage({ command: 'search', text: query });
-                        } else {
-                            statusDiv.textContent = '';
-                            resultsList.innerHTML = '';
-                        }
-                    }
-
-                    let debouncedSearch = debounce(performSearch, ${this.debounceTime});
-
-                    searchInput.addEventListener('input', () => debouncedSearch());
-
-                    toggleButton.addEventListener("click", () => {
-                        isPartialMatchEnabled = !isPartialMatchEnabled;
-                        vscode.postMessage({ command: "changeSearchMode", mode: isPartialMatchEnabled });
-
-                        toggleButton.classList.toggle("active", isPartialMatchEnabled);
-                        toggleButton.title = isPartialMatchEnabled
-                            ? "Partial match mode (activated)"
-                            : "Partial match mode";
-
-                        // 如果搜尋框中有內容，立即觸發搜尋
-                        if (searchInput.value.trim()) {
-                            debouncedSearch();
-                        }
-                    });
-
-                    window.addEventListener('message', event => {
-                        const message = event.data;
-                        switch (message.command) {
-                            case 'updateDebounceTime':
-                                debouncedSearch = debounce(performSearch, message.value);
-                                break;
-                            case 'updateResults':
-                                const results = message.results;
-                                const query = message.query;
-                                resultsList.innerHTML = '';
-
-                                if (results.length > 0) {
-                                    statusDiv.textContent = \`搜尋 "\${query}"，找到 \${results.length} 個結果：\`;
-                                    results.forEach(result => {
-                                        const li = document.createElement('li');
-
-                                        // 建立標籤文字
-                                        const labelText = document.createTextNode(result.label);
-                                        li.appendChild(labelText);
-
-                                        // 添加冒號
-                                        li.appendChild(document.createTextNode(': '));
-
-                                        // 建立檔案名稱 span
-                                        const fileNameSpan = document.createElement('span');
-                                        fileNameSpan.className = 'file-name';
-                                        fileNameSpan.textContent = result.fileName;
-                                        li.appendChild(fileNameSpan);
-
-                                        li.addEventListener('click', () => {
-                                            vscode.postMessage({ command: 'openFile', symbol: result });
-                                        });
-                                        resultsList.appendChild(li);
-                                    });
-                                } else {
-                                    statusDiv.textContent = \`搜尋 "\${query}"，未找到結果。\`;
-                                }
-                                break;
-                            case 'focusSearchInput':
-                                searchInput.focus();
-                                break;
-                        }
-                    });
-                </script>
-            </body>
-            </html>
-        `;
+        return applyPlaceholders(htmlTemplate, {
+            NONCE: nonce,
+            CSP_SOURCE: webview.cspSource,
+            CODICONS_URI: codiconsUri.toString(),
+            STYLE: styleContent,
+            SCRIPT: scriptContent
+        });
     }
 
     private getNonce() {
@@ -371,3 +201,14 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
 }
 
 export function deactivate() {}
+
+/**
+ * Substitute `{{KEY}}` placeholders in `template` using `vars`. Unknown keys
+ * are left as-is so that any `{{...}}` written intentionally in the source
+ * (none today) is not silently dropped.
+ */
+function applyPlaceholders(template: string, vars: Record<string, string>): string {
+    return template.replace(/\{\{([A-Z_]+)\}\}/g, (match, key: string) =>
+        Object.prototype.hasOwnProperty.call(vars, key) ? vars[key] : match
+    );
+}
