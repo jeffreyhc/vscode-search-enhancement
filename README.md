@@ -61,7 +61,7 @@ The extension reads from a Ctags-generated symbol index. Set it up before first 
 
 ## Contributing
 
-Contributions, bug reports and feature requests are welcome. See [Contributing.md](Contributing.md) for details.
+Contributions, bug reports and feature requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## Developing
 
@@ -82,7 +82,7 @@ npm run test:integration  # e2e against a real VS Code instance
 
 ## License
 
-This project is licensed under the [MIT](License) license.
+This project is licensed under the [MIT](LICENSE) license.
 
 ## Acknowledgements
 
