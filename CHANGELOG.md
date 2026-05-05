@@ -59,3 +59,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - 移除未實際接到任何 view 的 TreeView dead code（`SearchResultsProvider` / `SearchResultItem` 與對應的 commands、context menu）
 - 把 unit tests 跟 integration tests 拆開，unit tests 用純 mocha 跑（30ms 內），CI 改成 9 個 matrix jobs 都跑 unit、僅 Linux + Node 20 跑需要 VS Code 的 e2e
 - README.md 改為英文主版本、附加 banner 跟 Marketplace gallery 設定；繁體中文版另存於 [README.zh-TW.md](README.zh-TW.md)
+
+### [0.3.3] - 2026-05-04
+#### Fix
+- `searchEnhancement.tagsFilePaths` 設定加上 `"scope": "resource"`，multi-root workspace 的每個 folder 可以獨立設定 tags 路徑
+#### Improve
+- 把 `getSymbolsFromTags` 從 `extension.ts` 抽到獨立的 `tagsParser.ts`，unit test 不再需要模擬 `vscode` module
+- Webview HTML / CSS / JS 從 200 行 inline template literal 拆到 [resource/webview/](resource/webview/) 下的三個獨立檔案，方便編輯器 syntax highlighting 與後續 UI 改動
+- LICENSE / CONTRIBUTING.md 改名為 GitHub 慣例的全大寫
+- `package.json` 的 `license` 改為 SPDX `MIT`
+- `.vscodeignore` 補上 `.claude/`、`.github/`、`out/test/`、`*.code-workspace`、`*.vsix`，避免內部 / CI / 測試檔被打包進 marketplace 上的 vsix
