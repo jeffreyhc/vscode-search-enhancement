@@ -64,7 +64,8 @@
         {
           "id": "searchResultsView",
           "name": "",
-          "type": "webview"
+          "type": "webview",
+          "icon": "resource/icons/search.svg"
         }
       ]
     },
