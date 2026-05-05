@@ -104,7 +104,7 @@
   "dependencies": {
     "@vscode/codicons": "^0.0.35"
   },
-  "license": "Refer to LICENSE.md",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/jeffreyhc/vscode-search-enhancement/issues"
   },
