@@ -116,7 +116,8 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                                 label: sym.name,
                                 filePath: sym.file,
                                 line: sym.line,
-                                fileName: path.basename(sym.file)
+                                fileName: path.basename(sym.file),
+                                kind: sym.kind
                             }));
                             webviewView.webview.postMessage({ command: 'updateResults', results, query });
                         }

@@ -78,3 +78,26 @@ li {
 li:hover {
     background-color: rgb(70, 70, 70);
 }
+
+/* Symbol type icon shown before each result label. Colours follow
+   VS Code's outline-view convention so they re-theme automatically. */
+.symbol-icon {
+    margin-right: 6px;
+    font-size: 14px;
+    vertical-align: middle;
+}
+
+.codicon-symbol-class.symbol-icon          { color: var(--vscode-symbolIcon-classForeground); }
+.codicon-symbol-constant.symbol-icon       { color: var(--vscode-symbolIcon-constantForeground); }
+.codicon-symbol-enum-member.symbol-icon    { color: var(--vscode-symbolIcon-enumeratorMemberForeground); }
+.codicon-symbol-function.symbol-icon       { color: var(--vscode-symbolIcon-functionForeground); }
+.codicon-symbol-enum.symbol-icon           { color: var(--vscode-symbolIcon-enumeratorForeground); }
+.codicon-symbol-file.symbol-icon           { color: var(--vscode-symbolIcon-fileForeground); }
+.codicon-symbol-field.symbol-icon          { color: var(--vscode-symbolIcon-fieldForeground); }
+.codicon-symbol-namespace.symbol-icon      { color: var(--vscode-symbolIcon-namespaceForeground); }
+.codicon-symbol-method.symbol-icon         { color: var(--vscode-symbolIcon-methodForeground); }
+.codicon-symbol-struct.symbol-icon         { color: var(--vscode-symbolIcon-structForeground); }
+.codicon-symbol-type-parameter.symbol-icon { color: var(--vscode-symbolIcon-typeParameterForeground); }
+.codicon-symbol-variable.symbol-icon       { color: var(--vscode-symbolIcon-variableForeground); }
+.codicon-symbol-parameter.symbol-icon      { color: var(--vscode-symbolIcon-variableForeground); }
+.codicon-symbol-misc.symbol-icon           { color: var(--vscode-foreground); }

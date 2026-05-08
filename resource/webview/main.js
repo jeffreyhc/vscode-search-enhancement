@@ -1,3 +1,29 @@
+// Maps a ctags single-letter `kind` to a codicon class. The mapping follows
+// VS Code outline view conventions and covers Universal Ctags' default C/C++
+// kinds. Unknown / undefined kinds fall back to symbol-misc.
+const KIND_TO_CODICON = {
+    c: 'symbol-class',
+    d: 'symbol-constant',
+    e: 'symbol-enum-member',
+    f: 'symbol-function',
+    g: 'symbol-enum',
+    h: 'symbol-file',
+    m: 'symbol-field',
+    n: 'symbol-namespace',
+    p: 'symbol-method',
+    s: 'symbol-struct',
+    t: 'symbol-type-parameter',
+    u: 'symbol-struct',
+    v: 'symbol-variable',
+    x: 'symbol-variable',
+    l: 'symbol-variable',
+    z: 'symbol-parameter'
+};
+
+function codiconClassForKind(kind) {
+    return KIND_TO_CODICON[kind] || 'symbol-misc';
+}
+
 const vscode = acquireVsCodeApi();
 const searchInput = document.getElementById('search');
 const statusDiv = document.getElementById('status');
@@ -63,6 +89,11 @@ window.addEventListener('message', (event) => {
                 statusDiv.textContent = `搜尋 "${query}"，找到 ${results.length} 個結果：`;
                 results.forEach((result) => {
                     const li = document.createElement('li');
+
+                    const iconSpan = document.createElement('span');
+                    iconSpan.className = `codicon codicon-${codiconClassForKind(result.kind)} symbol-icon`;
+                    iconSpan.setAttribute('aria-hidden', 'true');
+                    li.appendChild(iconSpan);
 
                     li.appendChild(document.createTextNode(result.label));
                     li.appendChild(document.createTextNode(': '));
