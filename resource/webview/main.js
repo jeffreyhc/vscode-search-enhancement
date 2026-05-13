@@ -1,7 +1,9 @@
-// Maps a ctags single-letter `kind` to a codicon class. The mapping follows
-// VS Code outline view conventions and covers Universal Ctags' default C/C++
-// kinds. Unknown / undefined kinds fall back to symbol-misc.
+// Maps a ctags `kind` to a codicon class. Covers both Universal Ctags' default
+// single-letter form for C/C++ AND the long-form names emitted with
+// --fields=+K. The mapping follows VS Code outline view conventions. Unknown
+// or undefined kinds fall back to symbol-misc.
 const KIND_TO_CODICON = {
+    // Single-letter (default)
     c: 'symbol-class',
     d: 'symbol-constant',
     e: 'symbol-enum-member',
@@ -17,7 +19,24 @@ const KIND_TO_CODICON = {
     v: 'symbol-variable',
     x: 'symbol-variable',
     l: 'symbol-variable',
-    z: 'symbol-parameter'
+    z: 'symbol-parameter',
+    // Long-form (--fields=+K)
+    class: 'symbol-class',
+    macro: 'symbol-constant',
+    enumerator: 'symbol-enum-member',
+    function: 'symbol-function',
+    enum: 'symbol-enum',
+    header: 'symbol-file',
+    member: 'symbol-field',
+    namespace: 'symbol-namespace',
+    prototype: 'symbol-method',
+    struct: 'symbol-struct',
+    typedef: 'symbol-type-parameter',
+    union: 'symbol-struct',
+    variable: 'symbol-variable',
+    externvar: 'symbol-variable',
+    local: 'symbol-variable',
+    parameter: 'symbol-parameter'
 };
 
 function codiconClassForKind(kind) {

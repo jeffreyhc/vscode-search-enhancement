@@ -6,26 +6,29 @@ export interface CtagsSymbol {
     name: string;
     file: string;
     line: number;
-    /** 符號種類 (function, variable, class...) */
+    /** 符號種類 (function `f`, variable `v`, class `c`, ...) */
     kind?: string;
-    /** 可能還有更多屬性，如 language, scope, 依需求自行加入 */
+    /** Other extension fields such as language, scope, typeref, access. */
     [key: string]: string | number | boolean | undefined;
 }
 
 /**
  * Parse a ctags-format index file into a list of symbols.
  *
- * Expected line format:
- *   name<TAB>file<TAB>exCmd[<TAB>extra fields ...]
+ * Real Universal Ctags row format:
  *
- *   - name      : symbol identifier
- *   - file      : path (relative to the tags file's directory) or absolute
- *   - exCmd     : line number, or a `/^pattern$/` regex; non-numeric falls
- *                 back to line 1
- *   - extras    : optional `;" kind` plus `key:value` pairs (Universal Ctags)
+ *   name<TAB>file<TAB>exCmd;"<TAB>kind[<TAB>key:value]*
  *
- * Lines beginning with `!` are ctags metadata headers and are skipped, as
- * are rows with fewer than three columns. CRLF line endings (default for
+ * The `;"` sentinel is glued to the end of exCmd (regex pattern or line
+ * number); the next tab-separated field is the single-letter kind (or
+ * `kind:long-name` when --fields=+K was used), followed by zero or more
+ * `key:value` extension fields such as `line:193`, `typeref:typename:void`,
+ * `scope:MyClass`, `file:` (the last one has an empty value to indicate a
+ * file-scope / static symbol — we skip empty values so they don't clobber
+ * the resolved file path).
+ *
+ * Lines beginning with `!` are metadata headers and are skipped, as are
+ * rows with fewer than three columns. CRLF line endings (default for
  * Universal Ctags on Windows) are supported.
  */
 export async function getSymbolsFromTags(tagsFilePath: string): Promise<CtagsSymbol[]> {
@@ -45,13 +48,16 @@ export async function getSymbolsFromTags(tagsFilePath: string): Promise<CtagsSym
 
         const name = parts[0];
         const filePath = parts[1];
-        const exCmd = parts[2];
+        // Universal Ctags glues `;"` to exCmd; strip before further parsing.
+        const exCmd = parts[2].replace(/;"$/, '');
 
         let lineNumber = 1;
         const lineMatch = exCmd.match(/^\d+$/);
         if (lineMatch) {
             lineNumber = parseInt(lineMatch[0], 10);
         }
+        // Non-numeric exCmd (regex pattern) → fall back to 1; will be
+        // overridden below by a `line:N` extension field if present.
 
         const absoluteFilePath = path.isAbsolute(filePath)
             ? filePath
@@ -63,22 +69,26 @@ export async function getSymbolsFromTags(tagsFilePath: string): Promise<CtagsSym
             line: lineNumber
         };
 
-        if (parts.length > 3) {
-            const extraFields = parts.slice(3).join('\t').trim();
-
-            // ;" <kind> — single-letter kind from classic ctags format
-            const kindMatch = extraFields.match(/;"\s+(\S+)/);
-            if (kindMatch) {
-                symbol.kind = kindMatch[1];
+        // First extension field (parts[3]) is the kind. The rest are
+        // key:value pairs. `kind:long-name` form (--fields=+K) is also
+        // recognised in either slot.
+        if (parts.length > 3 && parts[3]) {
+            const firstExt = parts[3];
+            const colonIdx = firstExt.indexOf(':');
+            if (colonIdx > 0) {
+                applyExtension(symbol, firstExt.slice(0, colonIdx), firstExt.slice(colonIdx + 1));
+            } else {
+                symbol.kind = firstExt;
             }
 
-            // Universal Ctags key:value pairs e.g. language:TypeScript scope:MyClass
-            const keyValuePairs = extraFields.match(/\b(\w+):([^\s]+)/g);
-            if (keyValuePairs) {
-                keyValuePairs.forEach((pair: string) => {
-                    const [k, v] = pair.split(':');
-                    symbol[k] = v;
-                });
+            for (const field of parts.slice(4)) {
+                if (!field) {
+                    continue;
+                }
+                const idx = field.indexOf(':');
+                if (idx > 0) {
+                    applyExtension(symbol, field.slice(0, idx), field.slice(idx + 1));
+                }
             }
         }
 
@@ -86,4 +96,25 @@ export async function getSymbolsFromTags(tagsFilePath: string): Promise<CtagsSym
     }
 
     return symbols;
+}
+
+/** Set a parsed extension field on the symbol, respecting reserved keys. */
+function applyExtension(symbol: CtagsSymbol, key: string, value: string): void {
+    if (!value) {
+        // Empty value (e.g. `file:` meaning "file-scope") → ignore so the
+        // resolved file path / line number / kind aren't clobbered.
+        return;
+    }
+    if (key === 'kind') {
+        symbol.kind = value;
+        return;
+    }
+    if (key === 'line') {
+        const parsed = parseInt(value, 10);
+        if (!isNaN(parsed)) {
+            symbol.line = parsed;
+        }
+        return;
+    }
+    symbol[key] = value;
 }

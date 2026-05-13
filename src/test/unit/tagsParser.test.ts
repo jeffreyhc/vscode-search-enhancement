@@ -22,9 +22,9 @@ suite('tagsParser', () => {
             '!_TAG_FILE_FORMAT\t2\t/extended format/',
             '',
             'badrow\tonly-two-columns',
-            'foo\tsrc/foo.ts\t10\t;"\tf\tlanguage:TypeScript\tscope:MyClass',
-            `bar\t${absoluteFilePath}\t/^const bar =$/\t;"\tv`,
-            'baz\tsrc/baz.ts\tnot_a_line\t;"\tv'
+            'foo\tsrc/foo.ts\t10;"\tf\tlanguage:TypeScript\tscope:MyClass',
+            `bar\t${absoluteFilePath}\t/^const bar =$/;"\tv`,
+            'baz\tsrc/baz.ts\tnot_a_line;"\tv'
         ].join('\n');
 
         fs.writeFileSync(tagsFilePath, tagsContent, 'utf8');
@@ -56,7 +56,7 @@ suite('tagsParser', () => {
     test('parses key:value extra fields from ctags extension columns', async () => {
         const tagsFilePath = path.join(tempDir, '.tags');
         const tagsContent = [
-            'with_meta\tsrc/meta.ts\t42\t;"\tf\tlanguage:TypeScript\taccess:public\tsignature:(x,y)'
+            'with_meta\tsrc/meta.ts\t42;"\tf\tlanguage:TypeScript\taccess:public\tsignature:(x,y)'
         ].join('\n');
 
         fs.writeFileSync(tagsFilePath, tagsContent, 'utf8');
@@ -95,7 +95,7 @@ suite('tagsParser', () => {
         const tagsContent = [
             '!_TAG_FILE_FORMAT\t2\t/extended format/',
             'foo\tsrc/foo.c\t10',
-            'bar\tsrc/bar.c\t20\t;"\tf'
+            'bar\tsrc/bar.c\t20;"\tf'
         ].join('\r\n');
 
         fs.writeFileSync(tagsFilePath, tagsContent, 'utf8');
@@ -108,5 +108,42 @@ suite('tagsParser', () => {
         assert.strictEqual(symbols[1].name, 'bar');
         assert.strictEqual(symbols[1].line, 20);
         assert.strictEqual(symbols[1].kind, 'f');
+    });
+
+    test('real-world Universal Ctags row: regex exCmd, line:N field, trailing empty file: scope', async () => {
+        // This mirrors a row from a real `ctags -R --languages=C,C++ --fields=+n --extras=+q`
+        // run against FreeRTOS sources. Regression test for the kind icon bug
+        // (issue #5 follow-up): the kind sentinel `;"` is glued to the exCmd,
+        // and `line:N` lives in the extension fields rather than in exCmd.
+        const tagsFilePath = path.join(tempDir, '.tags');
+        const row =
+            'vErrorChecks\tsrc/main.c\t/^static void vErrorChecks( void *pvParameters )$/;"\tf\tline:193\ttyperef:typename:void\tfile:';
+        fs.writeFileSync(tagsFilePath, row + '\n', 'utf8');
+
+        const symbols = await getSymbolsFromTags(tagsFilePath);
+
+        assert.strictEqual(symbols.length, 1);
+        const sym = symbols[0];
+        assert.strictEqual(sym.name, 'vErrorChecks');
+        // `file:` extension field has an empty value (= file-scope marker) and
+        // must NOT overwrite the resolved file path from parts[1].
+        assert.strictEqual(sym.file, path.join(tempDir, 'src', 'main.c'));
+        // `line:193` overrides the line=1 fallback that the regex exCmd produced.
+        assert.strictEqual(sym.line, 193);
+        assert.strictEqual(typeof sym.line, 'number');
+        assert.strictEqual(sym.kind, 'f');
+        assert.strictEqual(sym.typeref, 'typename:void');
+    });
+
+    test('accepts long-form kind via --fields=+K (kind:function)', async () => {
+        const tagsFilePath = path.join(tempDir, '.tags');
+        const row = 'doStuff\tsrc/a.c\t12;"\tkind:function\tline:12';
+        fs.writeFileSync(tagsFilePath, row + '\n', 'utf8');
+
+        const symbols = await getSymbolsFromTags(tagsFilePath);
+
+        assert.strictEqual(symbols.length, 1);
+        assert.strictEqual(symbols[0].kind, 'function');
+        assert.strictEqual(symbols[0].line, 12);
     });
 });
