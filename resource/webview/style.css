@@ -68,11 +68,18 @@ ul {
 }
 
 /* Group header in by-name mode: the symbol identifier itself. Use a
-   monospace stack to make C-style names easier to scan. */
+   monospace stack to make C-style names easier to scan. Truncate with
+   ellipsis when the symbol is too long for the panel width; the full
+   identifier is recoverable via the `title` tooltip on the span. */
 .file-header .symbol-group-name {
     color: var(--vscode-foreground);
     font-weight: 500;
     font-family: var(--vscode-editor-font-family, monospace);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1 1 auto;
 }
 
 /* In by-name mode the leaf rows show fileName + relativeDir instead of a
@@ -121,6 +128,17 @@ ul {
 
 .symbol-row:hover {
     background-color: rgb(70, 70, 70);
+}
+
+/* Long symbol identifiers (e.g. matches on a struct field deep inside a
+   nested scope) get truncated with an ellipsis so the row stays on one
+   line. The full text is recoverable via the `title` tooltip. */
+.symbol-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1 1 auto;
 }
 
 /* Symbol type icon shown before each result label. Colours follow

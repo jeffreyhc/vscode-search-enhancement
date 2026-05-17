@@ -231,8 +231,18 @@ function renderGroupedByFile(results) {
             (item) => {
                 const row = document.createElement('li');
                 row.className = 'symbol-row';
+                // Set the tooltip on the row itself so it fires anywhere on
+                // the row, not only over the text span (which is offset by
+                // padding). The icon's own title still takes precedence when
+                // hovering directly over the kind icon.
+                row.title = item.label;
                 row.appendChild(createIconSpan(item.kind));
-                row.appendChild(document.createTextNode(item.label));
+
+                const labelSpan = document.createElement('span');
+                labelSpan.className = 'symbol-label';
+                labelSpan.textContent = item.label;
+                row.appendChild(labelSpan);
+
                 row.addEventListener('click', () => {
                     vscode.postMessage({ command: 'openFile', symbol: item });
                 });
@@ -247,6 +257,10 @@ function renderGroupedByName(results) {
     for (const group of groupByName(results)) {
         const li = createCollapsibleGroup(
             (header) => {
+                // Tooltip on the header itself so it fires anywhere along
+                // the row, not only over the symbol-name span.
+                header.title = group.name;
+
                 // Use the first occurrence's kind for the header icon; in
                 // practice all items in a name group share the same kind.
                 header.appendChild(createIconSpan(group.items[0].kind));
