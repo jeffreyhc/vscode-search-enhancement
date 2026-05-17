@@ -43,6 +43,35 @@ function codiconClassForKind(kind) {
     return KIND_TO_CODICON[kind] || 'symbol-misc';
 }
 
+// Human-readable name shown in the icon's hover tooltip. Single-letter ctags
+// kinds get expanded; long-form kinds (`function`, `variable`, ...) are
+// already self-descriptive and pass through unchanged.
+const KIND_TO_DESCRIPTION = {
+    c: 'class',
+    d: 'macro',
+    e: 'enumerator',
+    f: 'function',
+    g: 'enum',
+    h: 'header',
+    m: 'member',
+    n: 'namespace',
+    p: 'function prototype',
+    s: 'struct',
+    t: 'typedef',
+    u: 'union',
+    v: 'variable',
+    x: 'extern variable',
+    l: 'local variable',
+    z: 'function parameter'
+};
+
+function describeKind(kind) {
+    if (!kind) {
+        return 'unknown kind';
+    }
+    return KIND_TO_DESCRIPTION[kind] || kind;
+}
+
 const vscode = acquireVsCodeApi();
 const searchInput = document.getElementById('search');
 const statusDiv = document.getElementById('status');
@@ -111,7 +140,8 @@ window.addEventListener('message', (event) => {
 
                     const iconSpan = document.createElement('span');
                     iconSpan.className = `codicon codicon-${codiconClassForKind(result.kind)} symbol-icon`;
-                    iconSpan.setAttribute('aria-hidden', 'true');
+                    iconSpan.title = describeKind(result.kind);
+                    iconSpan.setAttribute('aria-label', describeKind(result.kind));
                     li.appendChild(iconSpan);
 
                     li.appendChild(document.createTextNode(result.label));
