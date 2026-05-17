@@ -103,6 +103,80 @@ function performSearch() {
     }
 }
 
+// Group flat results by filePath, preserving insertion order for both
+// files and the symbols within each file. Returns an array of
+// { filePath, fileName, items } objects.
+function groupByFile(results) {
+    const groups = new Map();
+    for (const r of results) {
+        let group = groups.get(r.filePath);
+        if (!group) {
+            group = { filePath: r.filePath, fileName: r.fileName, items: [] };
+            groups.set(r.filePath, group);
+        }
+        group.items.push(r);
+    }
+    return Array.from(groups.values());
+}
+
+function renderGroupedResults(results) {
+    const groups = groupByFile(results);
+    for (const group of groups) {
+        const fileGroupLi = document.createElement('li');
+        fileGroupLi.className = 'file-group';
+
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'file-header';
+        headerDiv.setAttribute('role', 'button');
+        headerDiv.setAttribute('aria-expanded', 'true');
+
+        const chevron = document.createElement('span');
+        chevron.className = 'codicon codicon-chevron-down file-chevron';
+        chevron.setAttribute('aria-hidden', 'true');
+        headerDiv.appendChild(chevron);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'file-name';
+        nameSpan.textContent = group.fileName;
+        headerDiv.appendChild(nameSpan);
+
+        const countSpan = document.createElement('span');
+        countSpan.className = 'file-count';
+        countSpan.textContent = ` (${group.items.length})`;
+        headerDiv.appendChild(countSpan);
+
+        const itemsUl = document.createElement('ul');
+        itemsUl.className = 'file-items';
+
+        for (const item of group.items) {
+            const itemLi = document.createElement('li');
+            itemLi.className = 'symbol-row';
+
+            const iconSpan = document.createElement('span');
+            iconSpan.className = `codicon codicon-${codiconClassForKind(item.kind)} symbol-icon`;
+            iconSpan.title = describeKind(item.kind);
+            iconSpan.setAttribute('aria-label', describeKind(item.kind));
+            itemLi.appendChild(iconSpan);
+
+            itemLi.appendChild(document.createTextNode(item.label));
+
+            itemLi.addEventListener('click', () => {
+                vscode.postMessage({ command: 'openFile', symbol: item });
+            });
+            itemsUl.appendChild(itemLi);
+        }
+
+        headerDiv.addEventListener('click', () => {
+            const expanded = !fileGroupLi.classList.toggle('collapsed');
+            headerDiv.setAttribute('aria-expanded', String(expanded));
+        });
+
+        fileGroupLi.appendChild(headerDiv);
+        fileGroupLi.appendChild(itemsUl);
+        resultsList.appendChild(fileGroupLi);
+    }
+}
+
 let debouncedSearch = debounce(performSearch, {{DEBOUNCE_TIME}});
 
 searchInput.addEventListener('input', () => debouncedSearch());
@@ -135,28 +209,7 @@ window.addEventListener('message', (event) => {
 
             if (results.length > 0) {
                 statusDiv.textContent = `搜尋 "${query}"，找到 ${results.length} 個結果：`;
-                results.forEach((result) => {
-                    const li = document.createElement('li');
-
-                    const iconSpan = document.createElement('span');
-                    iconSpan.className = `codicon codicon-${codiconClassForKind(result.kind)} symbol-icon`;
-                    iconSpan.title = describeKind(result.kind);
-                    iconSpan.setAttribute('aria-label', describeKind(result.kind));
-                    li.appendChild(iconSpan);
-
-                    li.appendChild(document.createTextNode(result.label));
-                    li.appendChild(document.createTextNode(': '));
-
-                    const fileNameSpan = document.createElement('span');
-                    fileNameSpan.className = 'file-name';
-                    fileNameSpan.textContent = result.fileName;
-                    li.appendChild(fileNameSpan);
-
-                    li.addEventListener('click', () => {
-                        vscode.postMessage({ command: 'openFile', symbol: result });
-                    });
-                    resultsList.appendChild(li);
-                });
+                renderGroupedResults(results);
             } else {
                 statusDiv.textContent = `搜尋 "${query}"，未找到結果。`;
             }

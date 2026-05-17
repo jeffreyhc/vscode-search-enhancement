@@ -67,15 +67,65 @@ codicon {
 ul {
     list-style-type: none;
     padding: 0;
+    margin: 0;
 }
 
-li {
-    padding: 8px;
-    border-bottom: 1px;
+/* File group: a section per file with a clickable header and an indented
+   list of symbol rows below. */
+.file-group {
+    margin-bottom: 2px;
+}
+
+.file-header {
+    display: flex;
+    align-items: center;
+    padding: 4px 6px;
     cursor: pointer;
+    user-select: none;
 }
 
-li:hover {
+.file-header:hover {
+    background-color: rgb(60, 60, 60);
+}
+
+.file-chevron {
+    margin-right: 4px;
+    font-size: 14px;
+    transition: transform 0.15s ease;
+}
+
+.file-group.collapsed .file-chevron {
+    transform: rotate(-90deg);
+}
+
+.file-group.collapsed .file-items {
+    display: none;
+}
+
+.file-header .file-name {
+    color: var(--vscode-foreground);
+    font-weight: 500;
+}
+
+.file-header .file-count {
+    color: var(--vscode-descriptionForeground, #888);
+    font-size: 0.9em;
+    margin-left: 2px;
+}
+
+.file-items {
+    /* Indent symbol rows under the file header to convey hierarchy. */
+    padding-left: 18px;
+}
+
+.symbol-row {
+    padding: 4px 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.symbol-row:hover {
     background-color: rgb(70, 70, 70);
 }
 
