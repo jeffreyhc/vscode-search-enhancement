@@ -17,15 +17,26 @@ export function activate(context: vscode.ExtensionContext) {
     // 使用 WebviewViewProvider 來註冊側邊欄中的搜尋視圖
     const viewProvider = new SearchFunctionsViewProvider(context.extensionUri);
     context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider(SearchFunctionsViewProvider.viewId, viewProvider)
+        vscode.window.registerWebviewViewProvider(SearchFunctionsViewProvider.viewId, viewProvider),
+        vscode.commands.registerCommand('extension.searchFunctions', () => {
+            // 可在此做點擊後的操作，例如切換到 Explorer 或設定焦點到搜尋視圖
+            vscode.commands.executeCommand('workbench.view.extension.searchResultsContainer').then(() => {
+                viewProvider.focusSearchInput();
+            });
+        }),
+        vscode.commands.registerCommand('searchEnhancement.togglePartialMatch', () => {
+            viewProvider.togglePartialMatch();
+        }),
+        vscode.commands.registerCommand('searchEnhancement.groupByName', () => {
+            viewProvider.setGroupBy('name');
+        }),
+        vscode.commands.registerCommand('searchEnhancement.groupByFile', () => {
+            viewProvider.setGroupBy('file');
+        })
     );
-    vscode.commands.registerCommand('extension.searchFunctions', () => {
-        // 可在此做點擊後的操作，例如切換到 Explorer 或設定焦點到搜尋視圖
-        vscode.commands.executeCommand('workbench.view.extension.searchResultsContainer').then(() => {
-            viewProvider.focusSearchInput();
-        });
-    });
 }
+
+export type GroupByMode = 'name' | 'file';
 
 class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewId = 'searchResultsView';
@@ -36,12 +47,34 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
     private config = vscode.workspace.getConfiguration("searchEnhancement");
     private debounceTime = this.config.get<number>("debounceTime", DEFAULT_DEBOUNCE_TIME_MS);
     private tagsFilePathsConfig = this.config.get<string[]>("tagsFilePaths", []);
+    private groupByMode: GroupByMode =
+        this.config.get<GroupByMode>("defaultGroupBy", 'name') === 'file' ? 'file' : 'name';
 
     // mtime-based cache for parsed .tags files; saves re-reading large indexes
     // on every keystroke and stays correct across user-driven ctags re-runs.
     private symbolsCache = createTagsCache<CtagsSymbol[]>(getSymbolsFromTags);
 
-    constructor(private readonly _extensionUri: vscode.Uri) { }
+    constructor(private readonly _extensionUri: vscode.Uri) {
+        // Publish initial context keys so the view/title menu items render
+        // with the correct toggled state on first show.
+        vscode.commands.executeCommand('setContext', 'searchEnhancement.partialMatchEnabled', this.isPartialMatchMode);
+        vscode.commands.executeCommand('setContext', 'searchEnhancement.groupByMode', this.groupByMode);
+    }
+
+    public togglePartialMatch(): void {
+        this.isPartialMatchMode = !this.isPartialMatchMode;
+        vscode.commands.executeCommand('setContext', 'searchEnhancement.partialMatchEnabled', this.isPartialMatchMode);
+        // Webview re-runs its current query when it receives this so results
+        // immediately reflect the new mode.
+        this.view?.webview.postMessage({ command: 'setPartialMatch', enabled: this.isPartialMatchMode });
+    }
+
+    public setGroupBy(mode: GroupByMode): void {
+        this.groupByMode = mode;
+        vscode.commands.executeCommand('setContext', 'searchEnhancement.groupByMode', mode);
+        // Re-renders the cached result list with the new grouping; no re-search.
+        this.view?.webview.postMessage({ command: 'setGroupBy', mode });
+    }
 
     public resolveWebviewView(
 		webviewView: vscode.WebviewView,
@@ -140,9 +173,6 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                             editor.revealRange(new vscode.Range(position, position));
                         }
                         break;
-                    case 'changeSearchMode':
-                        this.isPartialMatchMode = message.mode;
-                        break;
                 }
             }
         );
@@ -186,7 +216,10 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
         const styleContent = fs.readFileSync(path.join(webviewDir, 'style.css'), 'utf8');
         const scriptContent = applyPlaceholders(
             fs.readFileSync(path.join(webviewDir, 'main.js'), 'utf8'),
-            { DEBOUNCE_TIME: String(this.debounceTime) }
+            {
+                DEBOUNCE_TIME: String(this.debounceTime),
+                DEFAULT_GROUP_BY: this.groupByMode
+            }
         );
 
         return applyPlaceholders(htmlTemplate, {

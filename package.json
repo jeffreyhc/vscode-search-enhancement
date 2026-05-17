@@ -41,6 +41,17 @@
           "default": [],
           "scope": "resource",
           "description": "ctags index file paths. Supports multiple .tags files."
+        },
+        "searchEnhancement.defaultGroupBy": {
+          "type": "string",
+          "enum": ["name", "file"],
+          "enumDescriptions": [
+            "Group results by symbol name. Each group lists every file where the symbol appears.",
+            "Group results by source file. Each group lists every matching symbol in that file."
+          ],
+          "default": "name",
+          "scope": "resource",
+          "description": "Default grouping mode for the search results panel. Can be switched live from the panel's More Actions (...) menu; this setting only controls the initial choice on each window reload."
         }
       }
     },
@@ -48,8 +59,45 @@
       {
         "command": "extension.searchFunctions",
         "title": "Search Symbols by Keywords"
+      },
+      {
+        "command": "searchEnhancement.togglePartialMatch",
+        "title": "Partial Match Mode",
+        "category": "Search Enhancement",
+        "toggled": "searchEnhancement.partialMatchEnabled"
+      },
+      {
+        "command": "searchEnhancement.groupByName",
+        "title": "Group by Name",
+        "category": "Search Enhancement",
+        "toggled": "searchEnhancement.groupByMode == 'name'"
+      },
+      {
+        "command": "searchEnhancement.groupByFile",
+        "title": "Group by File",
+        "category": "Search Enhancement",
+        "toggled": "searchEnhancement.groupByMode == 'file'"
       }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "searchEnhancement.togglePartialMatch",
+          "when": "view == searchResultsView",
+          "group": "1_search@1"
+        },
+        {
+          "command": "searchEnhancement.groupByName",
+          "when": "view == searchResultsView",
+          "group": "2_view@1"
+        },
+        {
+          "command": "searchEnhancement.groupByFile",
+          "when": "view == searchResultsView",
+          "group": "2_view@2"
+        }
+      ]
+    },
     "viewsContainers": {
       "activitybar": [
         {

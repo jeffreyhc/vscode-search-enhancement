@@ -76,9 +76,16 @@ const vscode = acquireVsCodeApi();
 const searchInput = document.getElementById('search');
 const statusDiv = document.getElementById('status');
 const resultsList = document.getElementById('results');
-const toggleButton = document.getElementById('toggleSearchMode');
 
-let isPartialMatchEnabled = false;
+// Initialised from the package.json `searchEnhancement.defaultGroupBy` setting
+// via template substitution. Switched live by `setGroupBy` messages from the
+// extension (driven by the panel's More Actions menu commands).
+let groupByMode = '{{DEFAULT_GROUP_BY}}';
+
+// Cached last result set so we can re-render when groupByMode changes without
+// asking the extension to re-search.
+let lastResults = [];
+let lastQuery = '';
 
 function debounce(func, wait) {
     let timeout;
@@ -100,12 +107,17 @@ function performSearch() {
     } else {
         statusDiv.textContent = '';
         resultsList.innerHTML = '';
+        lastResults = [];
+        lastQuery = '';
     }
 }
 
-// Group flat results by filePath, preserving insertion order for both
-// files and the symbols within each file. Returns an array of
-// { filePath, fileName, items } objects.
+let debouncedSearch = debounce(performSearch, {{DEBOUNCE_TIME}});
+
+searchInput.addEventListener('input', () => debouncedSearch());
+
+// --- Grouping helpers ---------------------------------------------------
+
 function groupByFile(results) {
     const groups = new Map();
     for (const r of results) {
@@ -124,92 +136,168 @@ function groupByFile(results) {
     return Array.from(groups.values());
 }
 
-function renderGroupedResults(results) {
-    const groups = groupByFile(results);
-    for (const group of groups) {
-        const fileGroupLi = document.createElement('li');
-        fileGroupLi.className = 'file-group';
-
-        const headerDiv = document.createElement('div');
-        headerDiv.className = 'file-header';
-        headerDiv.setAttribute('role', 'button');
-        headerDiv.setAttribute('aria-expanded', 'true');
-
-        const chevron = document.createElement('span');
-        chevron.className = 'codicon codicon-chevron-down file-chevron';
-        chevron.setAttribute('aria-hidden', 'true');
-        headerDiv.appendChild(chevron);
-
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'file-name';
-        nameSpan.textContent = group.fileName;
-        headerDiv.appendChild(nameSpan);
-
-        if (group.relativeDir) {
-            const dirSpan = document.createElement('span');
-            dirSpan.className = 'file-dir';
-            dirSpan.textContent = group.relativeDir;
-            // Show the full path on hover too, in case the absolute prefix
-            // (e.g. drive letter) is something the user cares about.
-            dirSpan.title = group.filePath;
-            headerDiv.appendChild(dirSpan);
+function groupByName(results) {
+    const groups = new Map();
+    for (const r of results) {
+        let group = groups.get(r.label);
+        if (!group) {
+            group = { name: r.label, items: [] };
+            groups.set(r.label, group);
         }
+        group.items.push(r);
+    }
+    return Array.from(groups.values());
+}
 
-        const countSpan = document.createElement('span');
-        countSpan.className = 'file-count';
-        countSpan.textContent = ` (${group.items.length})`;
-        headerDiv.appendChild(countSpan);
+// --- DOM helpers --------------------------------------------------------
 
-        const itemsUl = document.createElement('ul');
-        itemsUl.className = 'file-items';
+function createIconSpan(kind) {
+    const iconSpan = document.createElement('span');
+    iconSpan.className = `codicon codicon-${codiconClassForKind(kind)} symbol-icon`;
+    iconSpan.title = describeKind(kind);
+    iconSpan.setAttribute('aria-label', describeKind(kind));
+    return iconSpan;
+}
 
-        for (const item of group.items) {
-            const itemLi = document.createElement('li');
-            itemLi.className = 'symbol-row';
+function createDirSpan(filePath, relativeDir) {
+    if (!relativeDir) {
+        return null;
+    }
+    const dirSpan = document.createElement('span');
+    dirSpan.className = 'file-dir';
+    dirSpan.textContent = relativeDir;
+    dirSpan.title = filePath;
+    return dirSpan;
+}
 
-            const iconSpan = document.createElement('span');
-            iconSpan.className = `codicon codicon-${codiconClassForKind(item.kind)} symbol-icon`;
-            iconSpan.title = describeKind(item.kind);
-            iconSpan.setAttribute('aria-label', describeKind(item.kind));
-            itemLi.appendChild(iconSpan);
+function createCountSpan(n) {
+    const countSpan = document.createElement('span');
+    countSpan.className = 'file-count';
+    countSpan.textContent = ` (${n})`;
+    return countSpan;
+}
 
-            itemLi.appendChild(document.createTextNode(item.label));
+function createCollapsibleGroup(buildHeader, items, buildItem) {
+    const groupLi = document.createElement('li');
+    groupLi.className = 'file-group';
 
-            itemLi.addEventListener('click', () => {
-                vscode.postMessage({ command: 'openFile', symbol: item });
-            });
-            itemsUl.appendChild(itemLi);
-        }
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'file-header';
+    headerDiv.setAttribute('role', 'button');
+    headerDiv.setAttribute('aria-expanded', 'true');
 
-        headerDiv.addEventListener('click', () => {
-            const expanded = !fileGroupLi.classList.toggle('collapsed');
-            headerDiv.setAttribute('aria-expanded', String(expanded));
-        });
+    const chevron = document.createElement('span');
+    chevron.className = 'codicon codicon-chevron-down file-chevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    headerDiv.appendChild(chevron);
 
-        fileGroupLi.appendChild(headerDiv);
-        fileGroupLi.appendChild(itemsUl);
-        resultsList.appendChild(fileGroupLi);
+    buildHeader(headerDiv);
+
+    const itemsUl = document.createElement('ul');
+    itemsUl.className = 'file-items';
+    for (const item of items) {
+        itemsUl.appendChild(buildItem(item));
+    }
+
+    headerDiv.addEventListener('click', () => {
+        const expanded = !groupLi.classList.toggle('collapsed');
+        headerDiv.setAttribute('aria-expanded', String(expanded));
+    });
+
+    groupLi.appendChild(headerDiv);
+    groupLi.appendChild(itemsUl);
+    return groupLi;
+}
+
+// --- Renderers ----------------------------------------------------------
+
+function renderGroupedByFile(results) {
+    for (const group of groupByFile(results)) {
+        const li = createCollapsibleGroup(
+            (header) => {
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'file-name';
+                nameSpan.textContent = group.fileName;
+                header.appendChild(nameSpan);
+
+                const dirSpan = createDirSpan(group.filePath, group.relativeDir);
+                if (dirSpan) {
+                    header.appendChild(dirSpan);
+                }
+
+                header.appendChild(createCountSpan(group.items.length));
+            },
+            group.items,
+            (item) => {
+                const row = document.createElement('li');
+                row.className = 'symbol-row';
+                row.appendChild(createIconSpan(item.kind));
+                row.appendChild(document.createTextNode(item.label));
+                row.addEventListener('click', () => {
+                    vscode.postMessage({ command: 'openFile', symbol: item });
+                });
+                return row;
+            }
+        );
+        resultsList.appendChild(li);
     }
 }
 
-let debouncedSearch = debounce(performSearch, {{DEBOUNCE_TIME}});
+function renderGroupedByName(results) {
+    for (const group of groupByName(results)) {
+        const li = createCollapsibleGroup(
+            (header) => {
+                // Use the first occurrence's kind for the header icon; in
+                // practice all items in a name group share the same kind.
+                header.appendChild(createIconSpan(group.items[0].kind));
 
-searchInput.addEventListener('input', () => debouncedSearch());
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'symbol-group-name';
+                nameSpan.textContent = group.name;
+                header.appendChild(nameSpan);
 
-toggleButton.addEventListener('click', () => {
-    isPartialMatchEnabled = !isPartialMatchEnabled;
-    vscode.postMessage({ command: 'changeSearchMode', mode: isPartialMatchEnabled });
+                header.appendChild(createCountSpan(group.items.length));
+            },
+            group.items,
+            (item) => {
+                const row = document.createElement('li');
+                row.className = 'symbol-row location-row';
 
-    toggleButton.classList.toggle('active', isPartialMatchEnabled);
-    toggleButton.title = isPartialMatchEnabled
-        ? 'Partial match mode (activated)'
-        : 'Partial match mode';
+                const fileNameSpan = document.createElement('span');
+                fileNameSpan.className = 'file-name';
+                fileNameSpan.textContent = item.fileName;
+                row.appendChild(fileNameSpan);
 
-    // Trigger an immediate search if there is text in the box.
-    if (searchInput.value.trim()) {
-        debouncedSearch();
+                const dirSpan = createDirSpan(item.filePath, item.relativeDir);
+                if (dirSpan) {
+                    row.appendChild(dirSpan);
+                }
+
+                row.addEventListener('click', () => {
+                    vscode.postMessage({ command: 'openFile', symbol: item });
+                });
+                return row;
+            }
+        );
+        resultsList.appendChild(li);
     }
-});
+}
+
+function renderResults(results, query) {
+    resultsList.innerHTML = '';
+    if (!results || results.length === 0) {
+        statusDiv.textContent = query ? `搜尋 "${query}"，未找到結果。` : '';
+        return;
+    }
+    statusDiv.textContent = `搜尋 "${query}"，找到 ${results.length} 個結果：`;
+    if (groupByMode === 'file') {
+        renderGroupedByFile(results);
+    } else {
+        renderGroupedByName(results);
+    }
+}
+
+// --- Message router -----------------------------------------------------
 
 window.addEventListener('message', (event) => {
     const message = event.data;
@@ -218,15 +306,21 @@ window.addEventListener('message', (event) => {
             debouncedSearch = debounce(performSearch, message.value);
             break;
         case 'updateResults': {
-            const results = message.results;
-            const query = message.query;
-            resultsList.innerHTML = '';
-
-            if (results.length > 0) {
-                statusDiv.textContent = `搜尋 "${query}"，找到 ${results.length} 個結果：`;
-                renderGroupedResults(results);
-            } else {
-                statusDiv.textContent = `搜尋 "${query}"，未找到結果。`;
+            lastResults = message.results;
+            lastQuery = message.query;
+            renderResults(lastResults, lastQuery);
+            break;
+        }
+        case 'setGroupBy': {
+            groupByMode = message.mode;
+            renderResults(lastResults, lastQuery);
+            break;
+        }
+        case 'setPartialMatch': {
+            // Mode is already updated on the extension side; re-run the
+            // current query so the result list reflects the new filter.
+            if (searchInput.value.trim()) {
+                debouncedSearch();
             }
             break;
         }
