@@ -135,6 +135,27 @@ suite('tagsParser', () => {
         assert.strictEqual(sym.typeref, 'typename:void');
     });
 
+    test('handles raw TAB inside the regex exCmd (tab-aligned #define macros)', async () => {
+        // Regression for a real FreeRTOS .tags row: ctags preserves the tab
+        // character that separates `#define NAME` from the macro body, so the
+        // regex exCmd ends up containing literal `\t`. A naive split('\t')
+        // would treat the regex tail (and the kind that follows) as separate
+        // fields and the parser would pick up `/;"` as the kind. Find the
+        // part that ends with `;"` and re-join everything up to it as exCmd.
+        const tagsFilePath = path.join(tempDir, '.tags');
+        const row =
+            'portNVIC_SYSTICK_LOAD_REG\tport.c\t/^#define portNVIC_SYSTICK_LOAD_REG\t/;"\td\tline:53\tfile:';
+        fs.writeFileSync(tagsFilePath, row + '\n', 'utf8');
+
+        const symbols = await getSymbolsFromTags(tagsFilePath);
+
+        assert.strictEqual(symbols.length, 1);
+        assert.strictEqual(symbols[0].name, 'portNVIC_SYSTICK_LOAD_REG');
+        assert.strictEqual(symbols[0].file, path.join(tempDir, 'port.c'));
+        assert.strictEqual(symbols[0].line, 53);
+        assert.strictEqual(symbols[0].kind, 'd');
+    });
+
     test('accepts long-form kind via --fields=+K (kind:function)', async () => {
         const tagsFilePath = path.join(tempDir, '.tags');
         const row = 'doStuff\tsrc/a.c\t12;"\tkind:function\tline:12';

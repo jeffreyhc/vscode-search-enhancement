@@ -48,8 +48,29 @@ export async function getSymbolsFromTags(tagsFilePath: string): Promise<CtagsSym
 
         const name = parts[0];
         const filePath = parts[1];
-        // Universal Ctags glues `;"` to exCmd; strip before further parsing.
-        const exCmd = parts[2].replace(/;"$/, '');
+
+        // Universal Ctags allows raw TAB characters inside a regex exCmd
+        // (e.g. when source uses tab-aligned `#define` macros), so parts[2]
+        // alone may only be the start of exCmd. Find the part that ends with
+        // the `;"` sentinel — everything from parts[2] up to it is exCmd.
+        let exCmdEndIdx = -1;
+        for (let i = 2; i < parts.length; i++) {
+            if (parts[i].endsWith(';"')) {
+                exCmdEndIdx = i;
+                break;
+            }
+        }
+
+        let exCmd: string;
+        let extensionStartIdx: number;
+        if (exCmdEndIdx >= 2) {
+            exCmd = parts.slice(2, exCmdEndIdx + 1).join('\t').slice(0, -2);
+            extensionStartIdx = exCmdEndIdx + 1;
+        } else {
+            // No `;"` sentinel anywhere — assume no extension fields.
+            exCmd = parts.slice(2).join('\t');
+            extensionStartIdx = parts.length;
+        }
 
         let lineNumber = 1;
         const lineMatch = exCmd.match(/^\d+$/);
@@ -69,11 +90,10 @@ export async function getSymbolsFromTags(tagsFilePath: string): Promise<CtagsSym
             line: lineNumber
         };
 
-        // First extension field (parts[3]) is the kind. The rest are
-        // key:value pairs. `kind:long-name` form (--fields=+K) is also
-        // recognised in either slot.
-        if (parts.length > 3 && parts[3]) {
-            const firstExt = parts[3];
+        // First extension field is the kind (single-letter, or "kind:long-name"
+        // with --fields=+K). The rest are key:value pairs.
+        if (extensionStartIdx < parts.length && parts[extensionStartIdx]) {
+            const firstExt = parts[extensionStartIdx];
             const colonIdx = firstExt.indexOf(':');
             if (colonIdx > 0) {
                 applyExtension(symbol, firstExt.slice(0, colonIdx), firstExt.slice(colonIdx + 1));
@@ -81,7 +101,7 @@ export async function getSymbolsFromTags(tagsFilePath: string): Promise<CtagsSym
                 symbol.kind = firstExt;
             }
 
-            for (const field of parts.slice(4)) {
+            for (const field of parts.slice(extensionStartIdx + 1)) {
                 if (!field) {
                     continue;
                 }
