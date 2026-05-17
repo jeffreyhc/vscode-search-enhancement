@@ -69,3 +69,27 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - LICENSE / CONTRIBUTING.md 改名為 GitHub 慣例的全大寫
 - `package.json` 的 `license` 改為 SPDX `MIT`
 - `.vscodeignore` 補上 `.claude/`、`.github/`、`out/test/`、`*.code-workspace`、`*.vsix`，避免內部 / CI / 測試檔被打包進 marketplace 上的 vsix
+
+### [0.4.0] - 2026-05-18
+#### Add
+- 每筆搜尋結果前顯示對應的 codicon symbol 圖示 (Issue #5)
+  - 對 C/C++ ctags 預設 kind（`f`/`v`/`c`/`d`/...）做 mapping 到 VS Code outline view 慣用 icon，配色跟著主題自動切換
+  - 也支援 `--fields=+K` 的 long-form kind（`function`、`variable` 等）
+  - 滑鼠停在 icon 上會顯示 kind 的中英文人類可讀描述（`function`、`macro`、`enumerator` ...）
+- 搜尋結果可分組顯示，支援兩種模式 (Issue #6)
+  - **Group by Name**（預設）：每個 symbol name 一組，底下列出該 symbol 出現在哪些檔/路徑
+  - **Group by File**：每個檔案一組，底下列出該檔內的 matching symbols
+  - 點檔頭 / symbol name 可折疊或展開那組；每組顯示結果計數
+  - 多個同名檔（如 FreeRTOS 多個 `port.c`）會在檔名後顯示 dim 的相對路徑做區隔，hover 可看完整絕對路徑
+- 搜尋面板右上角 `...` 選單可即時切換模式
+  - `Partial Match Mode`、`Group by Name`、`Group by File` 三個 toggle
+  - 當前 active 的選項 title 會帶 `✓` 前綴做指示
+  - 切換顯示模式即時 re-render（不需要重新搜尋）
+- 新增設定 `searchEnhancement.defaultGroupBy`（`name` / `file`，預設 `name`，scope `resource`）控制初次開啟的預設分組
+- 過長的 symbol name 會自動以 `...` 截斷顯示（例如搜到 struct 內部 nested member 那種長串），hover 可看完整名稱
+#### Fix
+- 修正 ctags parser 對真實 Universal Ctags row 格式的解析
+  - 正確處理 `;"` sentinel 黏在 exCmd 後面的標準格式
+  - 正確處理 regex exCmd 內含 tab 字元的情況（如 tab-aligned `#define` macro）
+  - 正確用 extension 欄位裡的 `line:N` 覆蓋 regex exCmd 的 fallback 行號
+  - `file:` 等空值 key 不再 clobber 已 resolve 的 file path
