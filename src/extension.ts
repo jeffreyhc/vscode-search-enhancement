@@ -112,13 +112,20 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                                 matchesAllClauses(sym.name, clauses, this.isPartialMatchMode)
                             );
 
-                            const results = matchedSymbols.map(sym => ({
-                                label: sym.name,
-                                filePath: sym.file,
-                                line: sym.line,
-                                fileName: path.basename(sym.file),
-                                kind: sym.kind
-                            }));
+                            const results = matchedSymbols.map(sym => {
+                                const relativeDir = path.dirname(path.relative(rootPath, sym.file));
+                                return {
+                                    label: sym.name,
+                                    filePath: sym.file,
+                                    line: sym.line,
+                                    fileName: path.basename(sym.file),
+                                    // Empty for files directly under the workspace root; otherwise
+                                    // a path like `FreeRTOS/Source/portable/CCS/ARM_CM3` used to
+                                    // disambiguate same-named files in the grouped result view.
+                                    relativeDir: relativeDir === '.' ? '' : relativeDir,
+                                    kind: sym.kind
+                                };
+                            });
                             webviewView.webview.postMessage({ command: 'updateResults', results, query });
                         }
                         break;

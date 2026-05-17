@@ -111,7 +111,12 @@ function groupByFile(results) {
     for (const r of results) {
         let group = groups.get(r.filePath);
         if (!group) {
-            group = { filePath: r.filePath, fileName: r.fileName, items: [] };
+            group = {
+                filePath: r.filePath,
+                fileName: r.fileName,
+                relativeDir: r.relativeDir || '',
+                items: []
+            };
             groups.set(r.filePath, group);
         }
         group.items.push(r);
@@ -139,6 +144,16 @@ function renderGroupedResults(results) {
         nameSpan.className = 'file-name';
         nameSpan.textContent = group.fileName;
         headerDiv.appendChild(nameSpan);
+
+        if (group.relativeDir) {
+            const dirSpan = document.createElement('span');
+            dirSpan.className = 'file-dir';
+            dirSpan.textContent = group.relativeDir;
+            // Show the full path on hover too, in case the absolute prefix
+            // (e.g. drive letter) is something the user cares about.
+            dirSpan.title = group.filePath;
+            headerDiv.appendChild(dirSpan);
+        }
 
         const countSpan = document.createElement('span');
         countSpan.className = 'file-count';

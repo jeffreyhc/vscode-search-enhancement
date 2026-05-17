@@ -107,10 +107,23 @@ ul {
     font-weight: 500;
 }
 
+.file-header .file-dir {
+    color: var(--vscode-descriptionForeground, #888);
+    font-size: 0.9em;
+    margin-left: 8px;
+    opacity: 0.8;
+    /* Keep the whole header on one line; clip the path if the panel is narrow. */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
 .file-header .file-count {
     color: var(--vscode-descriptionForeground, #888);
     font-size: 0.9em;
-    margin-left: 2px;
+    margin-left: 6px;
+    flex-shrink: 0;
 }
 
 .file-items {
