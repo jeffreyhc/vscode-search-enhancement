@@ -24,16 +24,24 @@ export function activate(context: vscode.ExtensionContext) {
                 viewProvider.focusSearchInput();
             });
         }),
-        vscode.commands.registerCommand('searchEnhancement.togglePartialMatch', () => {
-            viewProvider.togglePartialMatch();
-        }),
-        vscode.commands.registerCommand('searchEnhancement.groupByName', () => {
-            viewProvider.setGroupBy('name');
-        }),
-        vscode.commands.registerCommand('searchEnhancement.groupByFile', () => {
-            viewProvider.setGroupBy('file');
-        })
+        ...registerTwinCommand('searchEnhancement.togglePartialMatch', () => viewProvider.togglePartialMatch()),
+        ...registerTwinCommand('searchEnhancement.groupByName', () => viewProvider.setGroupBy('name')),
+        ...registerTwinCommand('searchEnhancement.groupByFile', () => viewProvider.setGroupBy('file'))
     );
+}
+
+/**
+ * The view/title menu doesn't reliably honour `toggled` on webview-backed
+ * views, so we contribute *two* commands per toggle: a plain one and a
+ * `.checked` variant whose title is prefixed with `✓`. The active one is
+ * picked at render time by `when` clauses in package.json. Both ids share
+ * the same handler so clicking either has the same effect.
+ */
+function registerTwinCommand(id: string, handler: () => void): vscode.Disposable[] {
+    return [
+        vscode.commands.registerCommand(id, handler),
+        vscode.commands.registerCommand(`${id}.checked`, handler)
+    ];
 }
 
 export type GroupByMode = 'name' | 'file';
@@ -57,13 +65,12 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
     constructor(private readonly _extensionUri: vscode.Uri) {
         // Publish initial context keys so the view/title menu items render
         // with the correct toggled state on first show.
-        vscode.commands.executeCommand('setContext', 'searchEnhancement.partialMatchEnabled', this.isPartialMatchMode);
-        vscode.commands.executeCommand('setContext', 'searchEnhancement.groupByMode', this.groupByMode);
+        this.publishStateContextKeys();
     }
 
     public togglePartialMatch(): void {
         this.isPartialMatchMode = !this.isPartialMatchMode;
-        vscode.commands.executeCommand('setContext', 'searchEnhancement.partialMatchEnabled', this.isPartialMatchMode);
+        this.publishStateContextKeys();
         // Webview re-runs its current query when it receives this so results
         // immediately reflect the new mode.
         this.view?.webview.postMessage({ command: 'setPartialMatch', enabled: this.isPartialMatchMode });
@@ -71,9 +78,22 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
 
     public setGroupBy(mode: GroupByMode): void {
         this.groupByMode = mode;
-        vscode.commands.executeCommand('setContext', 'searchEnhancement.groupByMode', mode);
+        this.publishStateContextKeys();
         // Re-renders the cached result list with the new grouping; no re-search.
         this.view?.webview.postMessage({ command: 'setGroupBy', mode });
+    }
+
+    /**
+     * Push current toggle / mode state into context keys so the view/title
+     * menu's `toggled` conditions evaluate correctly. We use boolean keys
+     * per group-by mode (rather than a single string key compared with
+     * `==`) because the simpler `condition: <boolean-key>` form is the
+     * most reliable to render across VS Code menu surfaces.
+     */
+    private publishStateContextKeys(): void {
+        vscode.commands.executeCommand('setContext', 'searchEnhancement.partialMatchEnabled', this.isPartialMatchMode);
+        vscode.commands.executeCommand('setContext', 'searchEnhancement.isGroupByName', this.groupByMode === 'name');
+        vscode.commands.executeCommand('setContext', 'searchEnhancement.isGroupByFile', this.groupByMode === 'file');
     }
 
     public resolveWebviewView(

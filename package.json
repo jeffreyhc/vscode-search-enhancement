@@ -63,37 +63,69 @@
       {
         "command": "searchEnhancement.togglePartialMatch",
         "title": "Partial Match Mode",
-        "category": "Search Enhancement",
-        "toggled": "searchEnhancement.partialMatchEnabled"
+        "category": "Search Enhancement"
+      },
+      {
+        "command": "searchEnhancement.togglePartialMatch.checked",
+        "title": "✓ Partial Match Mode",
+        "category": "Search Enhancement"
       },
       {
         "command": "searchEnhancement.groupByName",
         "title": "Group by Name",
-        "category": "Search Enhancement",
-        "toggled": "searchEnhancement.groupByMode == 'name'"
+        "category": "Search Enhancement"
+      },
+      {
+        "command": "searchEnhancement.groupByName.checked",
+        "title": "✓ Group by Name",
+        "category": "Search Enhancement"
       },
       {
         "command": "searchEnhancement.groupByFile",
         "title": "Group by File",
-        "category": "Search Enhancement",
-        "toggled": "searchEnhancement.groupByMode == 'file'"
+        "category": "Search Enhancement"
+      },
+      {
+        "command": "searchEnhancement.groupByFile.checked",
+        "title": "✓ Group by File",
+        "category": "Search Enhancement"
       }
     ],
     "menus": {
+      "commandPalette": [
+        { "command": "searchEnhancement.togglePartialMatch.checked", "when": "false" },
+        { "command": "searchEnhancement.groupByName.checked", "when": "false" },
+        { "command": "searchEnhancement.groupByFile.checked", "when": "false" }
+      ],
       "view/title": [
         {
           "command": "searchEnhancement.togglePartialMatch",
-          "when": "view == searchResultsView",
+          "when": "view == searchResultsView && !searchEnhancement.partialMatchEnabled",
+          "group": "1_search@1"
+        },
+        {
+          "command": "searchEnhancement.togglePartialMatch.checked",
+          "when": "view == searchResultsView && searchEnhancement.partialMatchEnabled",
           "group": "1_search@1"
         },
         {
           "command": "searchEnhancement.groupByName",
-          "when": "view == searchResultsView",
+          "when": "view == searchResultsView && !searchEnhancement.isGroupByName",
+          "group": "2_view@1"
+        },
+        {
+          "command": "searchEnhancement.groupByName.checked",
+          "when": "view == searchResultsView && searchEnhancement.isGroupByName",
           "group": "2_view@1"
         },
         {
           "command": "searchEnhancement.groupByFile",
-          "when": "view == searchResultsView",
+          "when": "view == searchResultsView && !searchEnhancement.isGroupByFile",
+          "group": "2_view@2"
+        },
+        {
+          "command": "searchEnhancement.groupByFile.checked",
+          "when": "view == searchResultsView && searchEnhancement.isGroupByFile",
           "group": "2_view@2"
         }
       ]
