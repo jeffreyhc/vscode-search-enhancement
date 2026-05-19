@@ -4,10 +4,10 @@
 
 # search-enhancement
 
-[![Marketplace](https://img.shields.io/visual-studio-marketplace/v/jeffreyhc.vscode-search-enhancement?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=jeffreyhc.vscode-search-enhancement)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/jeffreyhc.vscode-search-enhancement)](https://marketplace.visualstudio.com/items?itemName=jeffreyhc.vscode-search-enhancement)
+[![Marketplace](https://vsmarketplacebadges.dev/version-short/jeffreyhc.vscode-search-enhancement.svg)](https://marketplace.visualstudio.com/items?itemName=jeffreyhc.vscode-search-enhancement)
+[![Installs](https://vsmarketplacebadges.dev/installs-short/jeffreyhc.vscode-search-enhancement.svg)](https://marketplace.visualstudio.com/items?itemName=jeffreyhc.vscode-search-enhancement)
 [![CI](https://github.com/jeffreyhc/vscode-search-enhancement/actions/workflows/node.js.yml/badge.svg)](https://github.com/jeffreyhc/vscode-search-enhancement/actions/workflows/node.js.yml)
-[![License](https://img.shields.io/github/license/jeffreyhc/vscode-search-enhancement)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Find any function, variable, or macro in million-line C/C++ codebases as fast as you can type. Multi-keyword search backed by [Universal Ctags](https://github.com/universal-ctags/ctags). Built for FreeRTOS, kernel, embedded, and legacy projects where IntelliSense is slow or unavailable.
 

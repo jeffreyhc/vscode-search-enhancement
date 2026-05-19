@@ -4,10 +4,10 @@
 
 # search-enhancement
 
-[![Marketplace](https://img.shields.io/visual-studio-marketplace/v/jeffreyhc.vscode-search-enhancement?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=jeffreyhc.vscode-search-enhancement)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/jeffreyhc.vscode-search-enhancement)](https://marketplace.visualstudio.com/items?itemName=jeffreyhc.vscode-search-enhancement)
+[![Marketplace](https://vsmarketplacebadges.dev/version-short/jeffreyhc.vscode-search-enhancement.svg)](https://marketplace.visualstudio.com/items?itemName=jeffreyhc.vscode-search-enhancement)
+[![Installs](https://vsmarketplacebadges.dev/installs-short/jeffreyhc.vscode-search-enhancement.svg)](https://marketplace.visualstudio.com/items?itemName=jeffreyhc.vscode-search-enhancement)
 [![CI](https://github.com/jeffreyhc/vscode-search-enhancement/actions/workflows/node.js.yml/badge.svg)](https://github.com/jeffreyhc/vscode-search-enhancement/actions/workflows/node.js.yml)
-[![License](https://img.shields.io/github/license/jeffreyhc/vscode-search-enhancement)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 在百萬行等級的 C/C++ codebase 裡，邊打字邊找到任何 function / variable / macro。多關鍵字搜尋，使用 [Universal Ctags](https://github.com/universal-ctags/ctags) 索引；專為 FreeRTOS、kernel、embedded 與 IntelliSense 跑不起來的 legacy 專案設計。
 
