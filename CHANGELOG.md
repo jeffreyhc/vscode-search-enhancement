@@ -70,6 +70,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `package.json` 的 `license` 改為 SPDX `MIT`
 - `.vscodeignore` 補上 `.claude/`、`.github/`、`out/test/`、`*.code-workspace`、`*.vsix`，避免內部 / CI / 測試檔被打包進 marketplace 上的 vsix
 
+### [0.5.2] - 2026-05-20
+#### Fix
+- 修 README badges 在 Marketplace 頁面顯示異常：
+  - shields.io 把 `visual-studio-marketplace` endpoint 撤掉了，version / installs badges 變成 "retired badge" 字樣 — 改用 `vsmarketplacebadges.dev` 社群替代服務
+  - shields.io 的 `github/license` endpoint 因 GitHub API token pool 耗盡回 "Unable to select next GitHub token from pool" 錯誤訊息塞進 badge 模板裡 — 改用 `img.shields.io/badge` 靜態 badge，不打 API、不會壞
+
 ### [0.5.1] - 2026-05-19
 #### Improve
 - Marketplace metadata 大改寫，提升搜尋曝光：
