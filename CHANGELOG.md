@@ -70,6 +70,19 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `package.json` 的 `license` 改為 SPDX `MIT`
 - `.vscodeignore` 補上 `.claude/`、`.github/`、`out/test/`、`*.code-workspace`、`*.vsix`，避免內部 / CI / 測試檔被打包進 marketplace 上的 vsix
 
+### [0.5.1] - 2026-05-19
+#### Improve
+- Marketplace metadata 大改寫，提升搜尋曝光：
+  - `displayName` 從 "Search Enhancement for code" 改為 "Search Enhancement — ctags Symbol Search"，把背後用的技術直接點出來
+  - `description` 從模糊一行改成具體 hook（million-line C/C++ codebase、FreeRTOS / kernel / embedded / legacy 場景、IntelliSense 跑不起來時的替代品）
+  - `keywords` 從 2 個（"search", "keyword"）擴到 17 個（ctags、c、cpp、c++、symbol、navigation、search、goto、definition、macro、embedded、kernel、freertos、zephyr、linux、large codebase、monorepo）
+  - `categories` 增加 "Programming Languages"
+- README 改寫：
+  - 加上 Marketplace / installs / CI / license badges
+  - 第一段換成具體的 value proposition、附上 v0.5.0 30× perf 數字
+  - 新增 "Why this over Ctrl+T" section 說明跟內建 symbol search 的差異（LSP-free、多關鍵字 AND、macros、大 codebase）
+- README.zh-TW 同步翻譯
+
 ### [0.5.0] - 2026-05-19
 #### Improve
 - 大型 codebase 的搜尋速度大幅提升 — 1.65M symbols 的 workload 從每個 keystroke ~3s 降到 ~100ms（**~30× faster**）
