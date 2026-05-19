@@ -63,10 +63,46 @@ search-enhancement 是用於加強 VS Code 的搜尋方式的擴充套件。
 
 圖標來源於 [SVG Repo](https://www.svgrepo.com/)
 
-## Tags 檔設定
+## 設定
 
-- 主要設定：`searchEnhancement.tagsFilePaths`（string array），可同時指向多個 `.tags` 檔
+所有設定都在 `searchEnhancement.*` 命名空間下。可在 Settings UI (`Ctrl` + `,`) 搜尋 *Search Enhancement*，或直接編輯 `settings.json`。
+
+| 設定 | 型別 | 預設 | 說明 |
+|---|---|---|---|
+| `tagsFilePaths` | `string[]` | `[]`（fallback 到 `${workspaceFolder}/.tags`）| 一或多個 ctags 索引檔，可以填絕對路徑或 `${workspaceFolder}/...` 樣板。`resource` scope，multi-root workspace 的每個 folder 可獨立設定。 |
+| `debounceTime` | `number` | `600` | 最後一個按鍵到觸發搜尋的等待毫秒數。值越低反應越快但更耗 CPU；越高越省但體感較慢。 |
+| `defaultGroupBy` | `"name"` \| `"file"` | `"name"` | 搜尋面板開啟時的初始分組方式。可從面板右上角 More Actions (`...`) 選單即時切換，不需要 reload。 |
+| `precomputeSegments` | `boolean` | `true` | 在 parse `.tags` 時就把每個 symbol 的 lowercase + underscore-split segments 算好快取起來，搜尋時不重算。對大型 index 大約 3–30× 加速，代價約每 100 萬 symbols 多 50–100 MB 常駐記憶體。 |
+| `profileSearch` | `boolean` | `false` | 開啟後每次搜尋會把分階段耗時印到 **Search Enhancement** Output channel，用於診斷慢搜尋。一般使用建議關閉。 |
+
+### Tags 檔路徑
+
 - 當 `tagsFilePaths` 為空時：
-  - 若 legacy `searchEnhancement.tagsFilePath` 有自訂值，會把該值 migrate 進 `tagsFilePaths[0]` 並寫入 settings
-  - 否則直接以記憶體中的預設值 `${workspaceFolder}/.tags` 運作，**不會修改任何 settings 檔**
-- Legacy `searchEnhancement.tagsFilePath` 已 deprecated，僅供 migration 相容性保留
+  - 若 legacy `searchEnhancement.tagsFilePath`（已 deprecated）有自訂值，會把該值 migrate 進 `tagsFilePaths[0]` 並寫入 settings
+  - 否則以記憶體中的預設值 `${workspaceFolder}/.tags` 運作，**不會修改任何 settings 檔**
+- `searchEnhancement.tagsFilePath`（單數）僅供 migration 相容性保留，新設定請用 `tagsFilePaths`
+
+### 記憶體 vs 速度的取捨（`precomputeSegments`）
+
+預設 `true` 是針對一般開發機器跟大型 codebase 調校 — 1.65M symbols 的 index 上，warm cache 搜尋從 ~3s 降到 ~100ms。如果你 index 的是小型專案、或是記憶體吃緊的環境，可以設為 `false` 省下 per-symbol cache（每 100 萬 symbols 約 50–100 MB）。切換即時生效，下一次搜尋自動 clear 並重新 parse。
+
+### 診斷慢搜尋（`profileSearch`）
+
+開啟設定後，打開 `View` → `Output` 並從右側 channel 選單選 **Search Enhancement**。每次搜尋會印一段像這樣的內容：
+
+```
+[14:32:05] Search "port" partial=false groupBy=name
+  resolve paths            0.2ms
+  tags cache              45.3ms  (1 files, 1 miss)
+  dedupe                   0.0ms  (47288 symbols)
+  filter                  18.7ms  (47288 → 137 matches)
+  build results            0.4ms
+  post message             0.1ms
+  ---
+  extension total         64.7ms
+  webview render          12.5ms  (137 results)
+  ---
+  end-to-end total        77.2ms
+```
+
+VS Code 啟動後第一次搜尋（或 ctags 重跑後第一次）會付一次 `tags cache` 的 parse cost（與索引大小成正比）；之後的搜尋直接重用 parse 結果。

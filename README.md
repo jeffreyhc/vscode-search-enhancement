@@ -51,13 +51,49 @@ The extension reads from a Ctags-generated symbol index. Set it up before first 
 3. Click any result to open the file at the matching line.
 4. Re-run ctags whenever your code changes — line numbers depend on the index being current.
 
-## Tags File Configuration
+## Settings
 
-- Primary setting: `searchEnhancement.tagsFilePaths` (string array). Supports multiple `.tags` files.
+All settings live under the `searchEnhancement.*` namespace. Open the Settings UI (`Ctrl` + `,`) and search for *Search Enhancement*, or edit `settings.json` directly.
+
+| Setting | Type | Default | Description |
+|---|---|---|---|
+| `tagsFilePaths` | `string[]` | `[]` (falls back to `${workspaceFolder}/.tags`) | One or more ctags index files. Absolute paths or `${workspaceFolder}/...` templates are both accepted. `resource`-scoped so each folder of a multi-root workspace can configure its own. |
+| `debounceTime` | `number` | `600` | Milliseconds to wait after the last keystroke before firing a search. Lower = more responsive but more CPU; higher = laggier but cheaper. |
+| `defaultGroupBy` | `"name"` \| `"file"` | `"name"` | Initial grouping of results when the panel opens. Can be switched live from the panel's More Actions (`...`) menu without reloading. |
+| `precomputeSegments` | `boolean` | `true` | Precompute lowercased / underscore-split segments at parse time so per-keystroke filtering can skip the work. ~3–30× faster on large indexes; costs roughly 50–100 MB of resident memory per 1 million symbols. |
+| `profileSearch` | `boolean` | `false` | Log per-stage timings to the **Search Enhancement** Output channel for each search. Use for diagnosing slow searches; leave off in normal use. |
+
+### Tags file paths
+
 - When `tagsFilePaths` is empty:
-  - If legacy `searchEnhancement.tagsFilePath` has a custom value, it is migrated into `tagsFilePaths[0]` and written to your settings.
-  - Otherwise the extension runs with the default `${workspaceFolder}/.tags` in memory **without modifying any settings file**.
-- Legacy `searchEnhancement.tagsFilePath` is deprecated and retained only for migration compatibility.
+  - If the legacy `searchEnhancement.tagsFilePath` (deprecated) has a custom value, it is migrated into `tagsFilePaths[0]` and persisted to your settings.
+  - Otherwise the default `${workspaceFolder}/.tags` is used at runtime **without modifying any settings file**.
+- `searchEnhancement.tagsFilePath` (singular) is retained only for migration compatibility; new setups should use `tagsFilePaths`.
+
+### Memory / speed trade-off (`precomputeSegments`)
+
+The default (`true`) is tuned for typical dev machines and large codebases — on a 1.65 M-symbol index it cuts each warm-cache search from ~3 s to ~100 ms. If you index a smaller project or are on a memory-constrained machine, set it to `false` to save the per-symbol cache (~50–100 MB per 1 M symbols). Toggling takes effect on the next search; the parsed-tags cache is cleared automatically.
+
+### Diagnosing slow searches (`profileSearch`)
+
+Enable the setting, then open `View` → `Output` and pick **Search Enhancement** from the channel picker on the right. Each search appends a block like:
+
+```
+[14:32:05] Search "port" partial=false groupBy=name
+  resolve paths            0.2ms
+  tags cache              45.3ms  (1 files, 1 miss)
+  dedupe                   0.0ms  (47288 symbols)
+  filter                  18.7ms  (47288 → 137 matches)
+  build results            0.4ms
+  post message             0.1ms
+  ---
+  extension total         64.7ms
+  webview render          12.5ms  (137 results)
+  ---
+  end-to-end total        77.2ms
+```
+
+The first search after VS Code starts (or after ctags re-runs) pays a one-time `tags cache` parse cost proportional to the index size; later searches reuse the parsed result.
 
 ## Contributing
 
