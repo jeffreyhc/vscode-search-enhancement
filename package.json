@@ -1,14 +1,33 @@
 {
   "name": "vscode-search-enhancement",
-  "displayName": "Search Enhancement for code",
-  "description": "The extension helps developers search functions/variables in code by keywords",
-  "keywords": ["search", "keyword"],
+  "displayName": "Search Enhancement — ctags Symbol Search",
+  "description": "Find any function, variable, or macro in million-line C/C++ codebases as fast as you can type. Multi-keyword AND matching backed by Universal Ctags. Built for FreeRTOS, kernel, embedded, and legacy projects where IntelliSense is slow or unavailable.",
+  "keywords": [
+    "ctags",
+    "c",
+    "cpp",
+    "c++",
+    "symbol",
+    "navigation",
+    "search",
+    "goto",
+    "definition",
+    "macro",
+    "embedded",
+    "kernel",
+    "freertos",
+    "zephyr",
+    "linux",
+    "large codebase",
+    "monorepo"
+  ],
   "version": "0.5.0",
   "publisher": "jeffreyhc",
   "engines": {
     "vscode": "^1.96.0"
   },
   "categories": [
+    "Programming Languages",
     "Other"
   ],
   "icon": "resource/icons/search.png",

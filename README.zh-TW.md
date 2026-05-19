@@ -4,7 +4,14 @@
 
 # search-enhancement
 
-search-enhancement 是用於加強 VS Code 的搜尋方式的擴充套件。
+[![Marketplace](https://img.shields.io/visual-studio-marketplace/v/jeffreyhc.vscode-search-enhancement?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=jeffreyhc.vscode-search-enhancement)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/jeffreyhc.vscode-search-enhancement)](https://marketplace.visualstudio.com/items?itemName=jeffreyhc.vscode-search-enhancement)
+[![CI](https://github.com/jeffreyhc/vscode-search-enhancement/actions/workflows/node.js.yml/badge.svg)](https://github.com/jeffreyhc/vscode-search-enhancement/actions/workflows/node.js.yml)
+[![License](https://img.shields.io/github/license/jeffreyhc/vscode-search-enhancement)](LICENSE)
+
+在百萬行等級的 C/C++ codebase 裡，邊打字邊找到任何 function / variable / macro。多關鍵字搜尋，使用 [Universal Ctags](https://github.com/universal-ctags/ctags) 索引；專為 FreeRTOS、kernel、embedded 與 IntelliSense 跑不起來的 legacy 專案設計。
+
+> ⚡ **v0.5.0**：百萬 symbols 索引上加速 30× — warm cache 3 秒 → 100 毫秒。詳見 [CHANGELOG](CHANGELOG.md)。
 
 ## Features
 
@@ -23,6 +30,17 @@ search-enhancement 是用於加強 VS Code 的搜尋方式的擴充套件。
 ![no search result](/resource/screenshots/no_result.png "no search result")
 
 ![partial match mode](/resource/screenshots/partial_match_mode.png "partial match mode")
+
+## 為什麼要用這個，而不是 `Ctrl+T`（Go to Symbol in Workspace）？
+
+VS Code 內建的 symbol search 走當下作用中的 Language Server。對 C/C++ 來說等於 clangd 或 cpptools 需要完整的專案設定（`compile_commands.json`、IntelliSense database）。對許多真實專案 — FreeRTOS / Zephyr / Linux / 廠商 SDK / 老的 build system — 這些設定常常壞掉、慢、或根本沒有。
+
+這個 extension 改用 [Universal Ctags](https://github.com/universal-ctags/ctags) 索引：
+
+- **不需要 build system。** ctags parse 得了就搜得到。不需要 `compile_commands.json`、不需要 LSP daemon、不需要 IntelliSense database。
+- **多關鍵字 AND 搜尋。** 打 `task create` 就能找到 `vTaskCreateStatic`、`xTaskCreatePinnedToCore` 等，順序無關。加底線像 `port_NVIC` 變成 phrase 比對。
+- **為大型 codebase 設計。** 百萬 symbols 規模 warm cache ~100 毫秒；每打一個字都不會卡 UI。
+- **包含 macros、typedef、ctags 認得的一切。** 包含很多 LSP 抓不到的 symbol。
 
 ## Installation
 

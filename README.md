@@ -4,7 +4,14 @@
 
 # search-enhancement
 
-A VS Code extension that enhances built-in search with multi-keyword symbol matching backed by [Universal Ctags](https://github.com/universal-ctags/ctags).
+[![Marketplace](https://img.shields.io/visual-studio-marketplace/v/jeffreyhc.vscode-search-enhancement?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=jeffreyhc.vscode-search-enhancement)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/jeffreyhc.vscode-search-enhancement)](https://marketplace.visualstudio.com/items?itemName=jeffreyhc.vscode-search-enhancement)
+[![CI](https://github.com/jeffreyhc/vscode-search-enhancement/actions/workflows/node.js.yml/badge.svg)](https://github.com/jeffreyhc/vscode-search-enhancement/actions/workflows/node.js.yml)
+[![License](https://img.shields.io/github/license/jeffreyhc/vscode-search-enhancement)](LICENSE)
+
+Find any function, variable, or macro in million-line C/C++ codebases as fast as you can type. Multi-keyword search backed by [Universal Ctags](https://github.com/universal-ctags/ctags). Built for FreeRTOS, kernel, embedded, and legacy projects where IntelliSense is slow or unavailable.
+
+> ⚡ **v0.5.0**: 30× faster on million-symbol indexes — 3 s → 100 ms warm cache. See [CHANGELOG](CHANGELOG.md).
 
 ## Features
 
@@ -23,6 +30,17 @@ Type space-separated keywords in the search box. Results are symbols whose name 
 ![no search result](/resource/screenshots/no_result.png "no search result")
 
 ![partial match mode](/resource/screenshots/partial_match_mode.png "partial match mode")
+
+## Why this over `Ctrl+T` (Go to Symbol in Workspace)?
+
+VS Code's built-in symbol search uses the active Language Server. For C/C++ that means clangd or cpptools needs a complete project setup (`compile_commands.json`, IntelliSense database). For many real-world projects — FreeRTOS / Zephyr / Linux / vendor SDKs / legacy build systems — that setup is fragile, slow, or doesn't exist.
+
+This extension reads from a [Universal Ctags](https://github.com/universal-ctags/ctags) index instead:
+
+- **No build-system dependency.** If ctags can parse it, you can search it. No `compile_commands.json`, no LSP daemon, no IntelliSense database.
+- **Multi-keyword AND search.** Type `task create` to find `vTaskCreateStatic`, `xTaskCreatePinnedToCore`, etc. — regardless of word order. Add underscores like `port_NVIC` for phrase matching.
+- **Built for scale.** Million-symbol indexes search in ~100 ms warm cache; per-keystroke filtering does not block the UI.
+- **Macros, typedefs, anything ctags knows.** Includes the symbols your LSP often misses.
 
 ## Installation
 
