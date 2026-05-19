@@ -79,10 +79,16 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
     private groupByMode: GroupByMode =
         this.config.get<GroupByMode>("defaultGroupBy", 'name') === 'file' ? 'file' : 'name';
     private profileSearch = this.config.get<boolean>("profileSearch", false);
+    private precomputeSegments = this.config.get<boolean>("precomputeSegments", true);
 
     // mtime-based cache for parsed .tags files; saves re-reading large indexes
     // on every keystroke and stays correct across user-driven ctags re-runs.
-    private symbolsCache = createTagsCache<CtagsSymbol[]>(getSymbolsFromTags);
+    // The parse closure reads `this.precomputeSegments` lazily so the cache
+    // picks up the current flag on each miss; setting changes call clear()
+    // to force a reparse with the new flag.
+    private symbolsCache = createTagsCache<CtagsSymbol[]>(
+        (filePath) => getSymbolsFromTags(filePath, { precomputeSegments: this.precomputeSegments })
+    );
 
     private pendingProfile: ProfileRecord | null = null;
 
@@ -153,6 +159,14 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
             if (effect.profileSearch !== undefined) {
                 this.profileSearch = effect.profileSearch;
                 webviewView.webview.postMessage({ command: 'setProfileEnabled', enabled: effect.profileSearch });
+            }
+            if (effect.precomputeSegments !== undefined) {
+                this.precomputeSegments = effect.precomputeSegments;
+                // Cached entries were parsed with the old flag; throw them away
+                // so the next search re-parses with the new one. Stat is still
+                // checked on the next get() so this is safe even if the file
+                // hasn't actually changed on disk.
+                this.symbolsCache.clear();
             }
         });
 
@@ -238,11 +252,22 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
         }));
         const t2 = profile ? performance.now() : 0;
 
-        const ctagsSymbols = dedupeSymbolsByIdentity(symbolResults.flat());
+        // Fast path: single .tags file means there's nothing to dedupe across
+        // sources. `dedupeSymbolsByIdentity` would still iterate N symbols and
+        // allocate one identity string per symbol just to confirm nothing
+        // collides — which on 1M+ indexes is the single biggest per-search
+        // cost. Skip it entirely in the common case.
+        const ctagsSymbols = symbolResults.length === 1
+            ? symbolResults[0]
+            : dedupeSymbolsByIdentity(symbolResults.flat());
         const t3 = profile ? performance.now() : 0;
 
+        // `sym.normalizedSegments` is populated when the user has
+        // `precomputeSegments` enabled (default). When disabled it's
+        // undefined and `matchesAllClauses` falls back to computing
+        // segments on the fly.
         const matchedSymbols = ctagsSymbols.filter(sym =>
-            matchesAllClauses(sym.name, clauses, this.isPartialMatchMode)
+            matchesAllClauses(sym.name, clauses, this.isPartialMatchMode, sym.normalizedSegments)
         );
         const t4 = profile ? performance.now() : 0;
 

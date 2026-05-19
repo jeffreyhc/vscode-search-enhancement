@@ -302,4 +302,20 @@ suite('Config Change Effect', () => {
         );
         assert.deepStrictEqual(effect, { debounceTime: 250, tagsFilePaths: ['x.tags'], profileSearch: true });
     });
+
+    test('returns only precomputeSegments when only precomputeSegments affected', () => {
+        const effect = deriveConfigChangeEffect(
+            makeEvent(['searchEnhancement.precomputeSegments']),
+            makeConfig({ precomputeSegments: false })
+        );
+        assert.deepStrictEqual(effect, { precomputeSegments: false });
+    });
+
+    test('precomputeSegments defaults to true when affected but not stored', () => {
+        const effect = deriveConfigChangeEffect(
+            makeEvent(['searchEnhancement.precomputeSegments']),
+            makeConfig({})
+        );
+        assert.deepStrictEqual(effect, { precomputeSegments: true });
+    });
 });

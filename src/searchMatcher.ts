@@ -81,7 +81,27 @@ export function matchesClause(symbolSegments: string[], clause: QueryClause, isP
     return matchesToken(symbolSegments, clause.parts[0], isPartial);
 }
 
-export function matchesAllClauses(symbolName: string, clauses: QueryClause[], isPartial: boolean): boolean {
-    const symbolSegments = normalizeSymbolSegments(symbolName);
+/**
+ * @param symbolName            Original symbol name. Used to derive segments
+ *                              on the fly when `precomputedSegments` is not
+ *                              supplied.
+ * @param clauses               Parsed query clauses to match (AND semantics).
+ * @param isPartial             When true, individual segments only need to
+ *                              substring-match each part.
+ * @param precomputedSegments   Optional, already-normalized segments produced
+ *                              by `normalizeSymbolSegments(symbolName)`. When
+ *                              callers cache this on the symbol (via
+ *                              `getSymbolsFromTags`'s `precomputeSegments`
+ *                              option) they can pass it here to skip the
+ *                              per-search split/lowercase work — the dominant
+ *                              cost on large indexes.
+ */
+export function matchesAllClauses(
+    symbolName: string,
+    clauses: QueryClause[],
+    isPartial: boolean,
+    precomputedSegments?: string[]
+): boolean {
+    const symbolSegments = precomputedSegments ?? normalizeSymbolSegments(symbolName);
     return clauses.every(clause => matchesClause(symbolSegments, clause, isPartial));
 }

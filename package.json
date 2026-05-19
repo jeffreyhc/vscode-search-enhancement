@@ -3,7 +3,7 @@
   "displayName": "Search Enhancement for code",
   "description": "The extension helps developers search functions/variables in code by keywords",
   "keywords": ["search", "keyword"],
-  "version": "0.4.0",
+  "version": "0.5.0",
   "publisher": "jeffreyhc",
   "engines": {
     "vscode": "^1.96.0"
@@ -58,6 +58,12 @@
           "default": false,
           "scope": "window",
           "description": "Log per-stage timings for each search to the \"Search Enhancement\" output channel. For diagnosing slow searches; leave off in normal use."
+        },
+        "searchEnhancement.precomputeSegments": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "description": "Precompute normalized symbol segments at parse time so per-keystroke filtering can skip the split/lowercase work. Trades roughly 50-100 MB of resident memory per 1 million indexed symbols for ~3-4× faster searches. Disable on memory-constrained systems."
         }
       }
     },

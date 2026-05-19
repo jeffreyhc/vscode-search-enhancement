@@ -91,4 +91,24 @@ suite('Search Matcher', () => {
         assert.deepStrictEqual(parseQueryClauses('foo_'), [{ kind: 'token', parts: ['foo'] }]);
         assert.deepStrictEqual(parseQueryClauses('__'), []);
     });
+
+    test('precomputed segments are used in place of re-normalizing the symbol name', () => {
+        const clauses = parseQueryClauses('A B C');
+        const precomputed = normalizeSymbolSegments('A_B_D_C_F');
+
+        // 4th arg is the cached segments; the symbolName arg is intentionally
+        // a sentinel that would NOT match if it were re-normalized — proving
+        // the function uses the cached segments instead of recomputing.
+        assert.strictEqual(matchesAllClauses('IRRELEVANT', clauses, false, precomputed), true);
+        assert.strictEqual(matchesAllClauses('IRRELEVANT', parseQueryClauses('Z'), false, precomputed), false);
+    });
+
+    test('falls back to normalizeSymbolSegments when precomputed segments not supplied', () => {
+        const clauses = parseQueryClauses('A B C');
+
+        // Behaviour with 3 args (legacy callers, tests above) is unchanged
+        // when 4th arg is omitted.
+        assert.strictEqual(matchesAllClauses('A_B_D_C_F', clauses, false), true);
+        assert.strictEqual(matchesAllClauses('A_B_D_C_F', clauses, false, undefined), true);
+    });
 });

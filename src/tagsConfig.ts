@@ -19,6 +19,7 @@ export interface ConfigChangeEffect {
     debounceTime?: number;
     tagsFilePaths?: string[];
     profileSearch?: boolean;
+    precomputeSegments?: boolean;
 }
 
 export const DEFAULT_DEBOUNCE_TIME_MS = 600;
@@ -145,6 +146,9 @@ export function deriveConfigChangeEffect(
     }
     if (event.affectsConfiguration('searchEnhancement.profileSearch')) {
         effect.profileSearch = config.get<boolean>('profileSearch', false);
+    }
+    if (event.affectsConfiguration('searchEnhancement.precomputeSegments')) {
+        effect.precomputeSegments = config.get<boolean>('precomputeSegments', true);
     }
 
     return effect;

@@ -70,6 +70,17 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `package.json` 的 `license` 改為 SPDX `MIT`
 - `.vscodeignore` 補上 `.claude/`、`.github/`、`out/test/`、`*.code-workspace`、`*.vsix`，避免內部 / CI / 測試檔被打包進 marketplace 上的 vsix
 
+### [0.5.0] - 2026-05-19
+#### Improve
+- 大型 codebase 的搜尋速度大幅提升 — 1.65M symbols 的 workload 從每個 keystroke ~3s 降到 ~100ms（**~30× faster**）
+  - 新增設定 `searchEnhancement.precomputeSegments`（boolean，預設 `true`，scope `window`）：在 parse `.tags` 時就把每個 symbol 的 lowercase / underscore-split segments 算好存起來，搜尋時直接讀、不重算
+  - 代價：每 100 萬 symbols 大約多 50-100 MB 常駐 memory；cold parse 多 ~15%
+  - 記憶體吃緊的環境可關掉這個設定，搜尋會回到 v0.4 的行為
+- 搜尋路徑針對「只有單一 `.tags` 檔案」做 fast path — 跳過 `dedupeSymbolsByIdentity` 整段 O(N) 字串配置 + Set 操作（dedupe 對單檔本來就是 no-op，但每次都要付 N 次字串 alloc 的 GC 壓力）
+#### Refactor
+- `getSymbolsFromTags` 加上 options 參數 `{ precomputeSegments?: boolean }`；`CtagsSymbol` 加 optional 欄位 `normalizedSegments?: string[]`
+- `matchesAllClauses` 加 optional 4th 參數 `precomputedSegments?: string[]`，有傳就跳過內部 normalize；沒傳時行為與 v0.4 完全相同
+
 ### [0.4.0] - 2026-05-18
 #### Add
 - 每筆搜尋結果前顯示對應的 codicon symbol 圖示 (Issue #5)

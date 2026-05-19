@@ -11,11 +11,16 @@
  *   git clone --depth=1 https://github.com/FreeRTOS/FreeRTOS-Kernel.git /tmp/freertos-kernel
  *   ctags -R --fields=+K -f /tmp/freertos-kernel/.tags /tmp/freertos-kernel
  *
- * The script measures the extension-side compute path (parse, dedupe,
- * filter, build-results) but not the webview DOM render, which needs a
- * real VS Code window. Mirrors the search-handler stages in
- * src/extension.ts as closely as possible while staying free of any
- * dependency on the `vscode` module so it can run in plain node.
+ * Runs every query twice: once in **baseline** mode (no precompute, dedupe
+ * runs) — matches the extension's pre-v0.5.0 behaviour — and once in
+ * **optimized** mode (precompute on, dedupe skipped) — matches the v0.5.0
+ * default when only one .tags file is in play. The per-stage delta between
+ * the two rows is the win from `searchEnhancement.precomputeSegments` plus
+ * the 1-file dedupe fast path.
+ *
+ * Webview DOM render is not exercised here — it needs a real VS Code window.
+ * For end-to-end profiling, enable `searchEnhancement.profileSearch` and
+ * watch the "Search Enhancement" output channel.
  */
 
 const path = require('path');
@@ -52,15 +57,26 @@ function stats(samples) {
 function fmtMs(ms) { return ms.toFixed(1).padStart(6); }
 
 /**
- * Mirrors the per-search compute path in src/extension.ts.
- * Returns { dedupeMs, filterMs, buildMs, matchCount }.
+ * Mirrors a single search through the extension's compute path.
+ *
+ * @param symbols      parsed symbol array (may or may not carry
+ *                     normalizedSegments depending on the parse options)
+ * @param clauses      parsed query clauses
+ * @param isPartial    partial-match flag
+ * @param rootPath     for building relative paths in the results step
+ * @param skipDedupe   when true, mimic the 1-file fast path in
+ *                     extension.ts that bypasses dedupeSymbolsByIdentity
+ * @param usePrecomputed when true, pass sym.normalizedSegments as the 4th
+ *                     arg to matchesAllClauses
  */
-function runOnce(symbols, clauses, isPartial, rootPath) {
+function runOnce(symbols, clauses, isPartial, rootPath, skipDedupe, usePrecomputed) {
     const t0 = performance.now();
-    const deduped = dedupeSymbolsByIdentity(symbols);
+    const deduped = skipDedupe ? symbols : dedupeSymbolsByIdentity(symbols);
     const t1 = performance.now();
 
-    const matched = deduped.filter(sym => matchesAllClauses(sym.name, clauses, isPartial));
+    const matched = usePrecomputed
+        ? deduped.filter(sym => matchesAllClauses(sym.name, clauses, isPartial, sym.normalizedSegments))
+        : deduped.filter(sym => matchesAllClauses(sym.name, clauses, isPartial));
     const t2 = performance.now();
 
     const results = matched.map(sym => {
@@ -88,26 +104,10 @@ function aggregate(runs, key) {
     return stats(runs.map(r => r[key]));
 }
 
-async function main() {
-    const tagsPath = process.argv[2];
-    if (!tagsPath) {
-        console.error('Usage: node scripts/bench-search.js <path-to-.tags>');
-        process.exit(2);
-    }
-
-    console.log(`fixture: ${tagsPath}`);
-    const parseStart = performance.now();
-    const symbols = await getSymbolsFromTags(tagsPath);
-    const parseMs = performance.now() - parseStart;
-    console.log(`parse:   ${symbols.length} symbols in ${fmtMs(parseMs)}ms`);
-    console.log(`runs:    warmup=${WARMUP_RUNS} measure=${MEASURE_RUNS}`);
-    console.log('');
-
-    const rootPath = path.dirname(tagsPath);
-
-    // Header
+function runQueryMatrix(label, symbols, rootPath, skipDedupe, usePrecomputed) {
+    console.log(`\n=== ${label} ===`);
     const header = [
-        'case'.padEnd(18),
+        'case'.padEnd(22),
         'mode'.padEnd(9),
         'matches'.padStart(8),
         'dedupe(p50/p95)'.padStart(18),
@@ -121,15 +121,13 @@ async function main() {
     for (const { name, q } of QUERIES) {
         const clauses = parseQueryClauses(q);
         for (const isPartial of [false, true]) {
-            // Warmup
             let matchCount = 0;
             for (let i = 0; i < WARMUP_RUNS; i++) {
-                matchCount = runOnce(symbols, clauses, isPartial, rootPath).matchCount;
+                matchCount = runOnce(symbols, clauses, isPartial, rootPath, skipDedupe, usePrecomputed).matchCount;
             }
-            // Measure
             const runs = [];
             for (let i = 0; i < MEASURE_RUNS; i++) {
-                runs.push(runOnce(symbols, clauses, isPartial, rootPath));
+                runs.push(runOnce(symbols, clauses, isPartial, rootPath, skipDedupe, usePrecomputed));
             }
             const dedupe = aggregate(runs, 'dedupeMs');
             const filter = aggregate(runs, 'filterMs');
@@ -137,7 +135,7 @@ async function main() {
             const totalP50 = dedupe.p50 + filter.p50 + build.p50;
 
             console.log([
-                (name + ' "' + q + '"').padEnd(18),
+                (name + ' "' + q + '"').padEnd(22),
                 (isPartial ? 'partial' : 'strict').padEnd(9),
                 String(matchCount).padStart(8),
                 `${fmtMs(dedupe.p50)}/${fmtMs(dedupe.p95)}`.padStart(18),
@@ -147,8 +145,41 @@ async function main() {
             ].join('  '));
         }
     }
-    console.log('');
-    console.log('All times in milliseconds.');
+}
+
+async function main() {
+    const tagsPath = process.argv[2];
+    if (!tagsPath) {
+        console.error('Usage: node scripts/bench-search.js <path-to-.tags>');
+        process.exit(2);
+    }
+
+    console.log(`fixture: ${tagsPath}`);
+
+    // Two separate parses so each mode gets symbols matching its expected
+    // shape. The precomputed parse is slightly slower (extra work per symbol)
+    // and we report both numbers.
+    const parseBaselineStart = performance.now();
+    const baselineSymbols = await getSymbolsFromTags(tagsPath);
+    const parseBaselineMs = performance.now() - parseBaselineStart;
+
+    const parsePrecompStart = performance.now();
+    const precomputedSymbols = await getSymbolsFromTags(tagsPath, { precomputeSegments: true });
+    const parsePrecompMs = performance.now() - parsePrecompStart;
+
+    console.log(`parse (no precompute):  ${precomputedSymbols.length} symbols in ${fmtMs(parseBaselineMs)}ms`);
+    console.log(`parse (+ precompute):   ${precomputedSymbols.length} symbols in ${fmtMs(parsePrecompMs)}ms  (delta ${fmtMs(parsePrecompMs - parseBaselineMs)}ms)`);
+    console.log(`runs: warmup=${WARMUP_RUNS} measure=${MEASURE_RUNS}`);
+
+    const rootPath = path.dirname(tagsPath);
+
+    runQueryMatrix('BASELINE  (no precompute, dedupe runs — pre-v0.5.0 behaviour)',
+        baselineSymbols, rootPath, /* skipDedupe */ false, /* usePrecomputed */ false);
+
+    runQueryMatrix('OPTIMIZED (precompute ON, dedupe skipped — v0.5.0 default for 1-file)',
+        precomputedSymbols, rootPath, /* skipDedupe */ true, /* usePrecomputed */ true);
+
+    console.log('\nAll times in milliseconds.');
 }
 
 main().catch(err => {

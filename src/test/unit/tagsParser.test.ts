@@ -167,4 +167,36 @@ suite('tagsParser', () => {
         assert.strictEqual(symbols[0].kind, 'function');
         assert.strictEqual(symbols[0].line, 12);
     });
+
+    test('precomputeSegments: true populates normalizedSegments per symbol', async () => {
+        const tagsFilePath = path.join(tempDir, '.tags');
+        const tagsContent = [
+            'vTaskCreate\tsrc/tasks.c\t10;"\tf',
+            'port_NVIC_INT\tsrc/port.c\t20;"\td',
+            '__attribute__\tsrc/header.h\t30;"\td'
+        ].join('\n');
+        fs.writeFileSync(tagsFilePath, tagsContent, 'utf8');
+
+        const symbols = await getSymbolsFromTags(tagsFilePath, { precomputeSegments: true });
+
+        assert.strictEqual(symbols.length, 3);
+        assert.deepStrictEqual(symbols[0].normalizedSegments, ['vtaskcreate']);
+        assert.deepStrictEqual(symbols[1].normalizedSegments, ['port', 'nvic', 'int']);
+        // Leading/trailing/repeated underscores collapse via the existing
+        // `filter(Boolean)` step inside normalizeSymbolSegments.
+        assert.deepStrictEqual(symbols[2].normalizedSegments, ['attribute']);
+    });
+
+    test('precomputeSegments default (off) leaves normalizedSegments undefined', async () => {
+        const tagsFilePath = path.join(tempDir, '.tags');
+        fs.writeFileSync(tagsFilePath, 'vTaskCreate\tsrc/tasks.c\t10;"\tf\n', 'utf8');
+
+        // Default options
+        const symbolsDefault = await getSymbolsFromTags(tagsFilePath);
+        assert.strictEqual(symbolsDefault[0].normalizedSegments, undefined);
+
+        // Explicit false
+        const symbolsExplicit = await getSymbolsFromTags(tagsFilePath, { precomputeSegments: false });
+        assert.strictEqual(symbolsExplicit[0].normalizedSegments, undefined);
+    });
 });
