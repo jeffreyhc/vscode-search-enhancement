@@ -12,5 +12,6 @@ vsc-extension-quickstart.md
 .claude/**
 .github/**
 out/test/**
+scripts/**
 *.code-workspace
 *.vsix
