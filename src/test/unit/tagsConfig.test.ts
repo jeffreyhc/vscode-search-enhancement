@@ -274,4 +274,32 @@ suite('Config Change Effect', () => {
         );
         assert.deepStrictEqual(effect, { debounceTime: DEFAULT_DEBOUNCE_TIME_MS, tagsFilePaths: [] });
     });
+
+    test('returns only profileSearch when only profileSearch affected', () => {
+        const effect = deriveConfigChangeEffect(
+            makeEvent(['searchEnhancement.profileSearch']),
+            makeConfig({ profileSearch: true })
+        );
+        assert.deepStrictEqual(effect, { profileSearch: true });
+    });
+
+    test('profileSearch defaults to false when affected but not stored', () => {
+        const effect = deriveConfigChangeEffect(
+            makeEvent(['searchEnhancement.profileSearch']),
+            makeConfig({})
+        );
+        assert.deepStrictEqual(effect, { profileSearch: false });
+    });
+
+    test('returns all three keys when all three affected', () => {
+        const effect = deriveConfigChangeEffect(
+            makeEvent([
+                'searchEnhancement.debounceTime',
+                'searchEnhancement.tagsFilePaths',
+                'searchEnhancement.profileSearch'
+            ]),
+            makeConfig({ debounceTime: 250, tagsFilePaths: ['x.tags'], profileSearch: true })
+        );
+        assert.deepStrictEqual(effect, { debounceTime: 250, tagsFilePaths: ['x.tags'], profileSearch: true });
+    });
 });

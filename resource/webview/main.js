@@ -87,6 +87,12 @@ let groupByMode = '{{DEFAULT_GROUP_BY}}';
 let lastResults = [];
 let lastQuery = '';
 
+// Toggled by the extension via `setProfileEnabled`. When true, renderResults
+// times itself and posts a `profileTiming` message so the extension can
+// append the webview render time to its profile output. Off by default so
+// normal usage pays no measurement overhead.
+let profileEnabled = false;
+
 function debounce(func, wait) {
     let timeout;
     return function (...args) {
@@ -322,7 +328,18 @@ window.addEventListener('message', (event) => {
         case 'updateResults': {
             lastResults = message.results;
             lastQuery = message.query;
+            // Time the render *only* on the search→render path; setGroupBy /
+            // setPartialMatch re-renders are independent of the extension's
+            // pending profile record and would emit stray timings.
+            const t0 = profileEnabled ? performance.now() : 0;
             renderResults(lastResults, lastQuery);
+            if (profileEnabled) {
+                vscode.postMessage({
+                    command: 'profileTiming',
+                    renderMs: performance.now() - t0,
+                    resultCount: lastResults ? lastResults.length : 0
+                });
+            }
             break;
         }
         case 'setGroupBy': {
@@ -336,6 +353,10 @@ window.addEventListener('message', (event) => {
             if (searchInput.value.trim()) {
                 debouncedSearch();
             }
+            break;
+        }
+        case 'setProfileEnabled': {
+            profileEnabled = !!message.enabled;
             break;
         }
         case 'focusSearchInput':

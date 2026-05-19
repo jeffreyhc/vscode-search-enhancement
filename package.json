@@ -52,6 +52,12 @@
           "default": "name",
           "scope": "resource",
           "description": "Default grouping mode for the search results panel. Can be switched live from the panel's More Actions (...) menu; this setting only controls the initial choice on each window reload."
+        },
+        "searchEnhancement.profileSearch": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "description": "Log per-stage timings for each search to the \"Search Enhancement\" output channel. For diagnosing slow searches; leave off in normal use."
         }
       }
     },

@@ -18,6 +18,7 @@ export type MigrationDecision =
 export interface ConfigChangeEffect {
     debounceTime?: number;
     tagsFilePaths?: string[];
+    profileSearch?: boolean;
 }
 
 export const DEFAULT_DEBOUNCE_TIME_MS = 600;
@@ -141,6 +142,9 @@ export function deriveConfigChangeEffect(
     }
     if (event.affectsConfiguration('searchEnhancement.tagsFilePaths')) {
         effect.tagsFilePaths = config.get<string[]>('tagsFilePaths', []);
+    }
+    if (event.affectsConfiguration('searchEnhancement.profileSearch')) {
+        effect.profileSearch = config.get<boolean>('profileSearch', false);
     }
 
     return effect;

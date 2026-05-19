@@ -29,8 +29,10 @@ suite('Tags Cache', () => {
         const second = await cache.get(file);
 
         assert.strictEqual(parseCount, 1, 'parser should run only once');
-        assert.deepStrictEqual(first, [1]);
-        assert.strictEqual(first, second, 'cached calls should return the same reference');
+        assert.deepStrictEqual(first.value, [1]);
+        assert.strictEqual(first.wasCached, false, 'first call is a miss');
+        assert.strictEqual(second.wasCached, true, 'second call is a hit');
+        assert.strictEqual(first.value, second.value, 'cached calls should return the same reference');
     });
 
     test('reparses after the file mtime advances', async () => {
@@ -51,8 +53,10 @@ suite('Tags Cache', () => {
 
         const second = await cache.get(file);
 
-        assert.strictEqual(first, 1);
-        assert.strictEqual(second, 2, 'mtime change should trigger a reparse');
+        assert.strictEqual(first.value, 1);
+        assert.strictEqual(first.wasCached, false);
+        assert.strictEqual(second.value, 2, 'mtime change should trigger a reparse');
+        assert.strictEqual(second.wasCached, false, 'mtime change is a miss, not a hit');
         assert.strictEqual(parseCount, 2);
     });
 
@@ -68,12 +72,15 @@ suite('Tags Cache', () => {
             return p;
         });
 
-        await cache.get(file1);
-        await cache.get(file2);
-        await cache.get(file1);
+        const r1a = await cache.get(file1);
+        const r2 = await cache.get(file2);
+        const r1b = await cache.get(file1);
 
         assert.deepStrictEqual(seen, [file1, file2], 'each unique path is parsed exactly once');
         assert.strictEqual(cache.size(), 2);
+        assert.strictEqual(r1a.wasCached, false);
+        assert.strictEqual(r2.wasCached, false);
+        assert.strictEqual(r1b.wasCached, true, 'second call on file1 is a hit');
     });
 
     test('invalidate forces a reparse for the next call', async () => {
@@ -86,11 +93,13 @@ suite('Tags Cache', () => {
             return parseCount;
         });
 
-        await cache.get(file);
+        const before = await cache.get(file);
         cache.invalidate(file);
-        await cache.get(file);
+        const after = await cache.get(file);
 
         assert.strictEqual(parseCount, 2);
+        assert.strictEqual(before.wasCached, false);
+        assert.strictEqual(after.wasCached, false, 'invalidated entry is a miss next time');
     });
 
     test('clear empties every entry', async () => {
