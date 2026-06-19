@@ -11,7 +11,9 @@
 
 Find any function, variable, or macro in million-line C/C++ codebases as fast as you can type. Multi-keyword search backed by [Universal Ctags](https://github.com/universal-ctags/ctags). Built for FreeRTOS, kernel, embedded, and legacy projects where IntelliSense is slow or unavailable.
 
-> ⚡ **v0.5.0**: 30× faster on million-symbol indexes — 3 s → 100 ms warm cache. See [CHANGELOG](CHANGELOG.md).
+> ⚡ **v0.5.3**: `.tags` parsing now starts when the search view opens. On a 1.65M-symbol index, a search after warm-up completes in ~62 ms instead of waiting ~9.9 s for a cold parse. Searching immediately after opening the view may still wait for the remaining warm-up.
+>
+> **v0.5.0**: 30× faster on million-symbol indexes — 3 s → 100 ms warm cache. See [CHANGELOG](CHANGELOG.md).
 
 ## Features
 
@@ -40,6 +42,7 @@ This extension reads from a [Universal Ctags](https://github.com/universal-ctags
 - **No build-system dependency.** If ctags can parse it, you can search it. No `compile_commands.json`, no LSP daemon, no IntelliSense database.
 - **Multi-keyword AND search.** Type `task create` to find `vTaskCreateStatic`, `xTaskCreatePinnedToCore`, etc. — regardless of word order. Add underscores like `port_NVIC` for phrase matching.
 - **Built for scale.** Million-symbol indexes search in ~100 ms warm cache; per-keystroke filtering does not block the UI.
+- **Warm before you type.** Opening the search view starts parsing `.tags` in the background. An immediate query shares the in-progress parse instead of starting duplicate work, but still waits for the remaining warm-up.
 - **Macros, typedefs, anything ctags knows.** Includes the symbols your LSP often misses.
 
 ## Installation
@@ -80,6 +83,7 @@ All settings live under the `searchEnhancement.*` namespace. Open the Settings U
 | `defaultGroupBy` | `"name"` \| `"file"` | `"name"` | Initial grouping of results when the panel opens. Can be switched live from the panel's More Actions (`...`) menu without reloading. |
 | `precomputeSegments` | `boolean` | `true` | Precompute lowercased / underscore-split segments at parse time so per-keystroke filtering can skip the work. ~3–30× faster on large indexes; costs roughly 50–100 MB of resident memory per 1 million symbols. |
 | `profileSearch` | `boolean` | `false` | Log per-stage timings to the **Search Enhancement** Output channel for each search. Use for diagnosing slow searches; leave off in normal use. |
+| `warmTagsCacheOnViewOpen` | `boolean` | `true` | Parse configured `.tags` files in the background when the search view opens. A query started before warm-up completes waits for the remaining parse. Disable to restore the previous cold-first-search behavior. |
 
 ### Tags file paths
 
@@ -111,7 +115,9 @@ Enable the setting, then open `View` → `Output` and pick **Search Enhancement*
   end-to-end total        77.2ms
 ```
 
-The first search after VS Code starts (or after ctags re-runs) pays a one-time `tags cache` parse cost proportional to the index size; later searches reuse the parsed result.
+To compare cold-first-search and background warm-up costs, enable `profileSearch`, set `warmTagsCacheOnViewOpen` to `false`, reload the window, and run one search. Then set it to `true`, reload again, wait for the `Tags warm-up` profile block, and run the same search. Reloading between runs prevents one mode's parsed cache from affecting the other.
+
+If background warm-up is disabled or has not finished yet, the first search pays the one-time `tags cache` parse cost proportional to the index size; later searches reuse the parsed result.
 
 ## Contributing
 

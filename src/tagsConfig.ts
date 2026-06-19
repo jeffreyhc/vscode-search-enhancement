@@ -20,6 +20,7 @@ export interface ConfigChangeEffect {
     tagsFilePaths?: string[];
     profileSearch?: boolean;
     precomputeSegments?: boolean;
+    warmTagsCacheOnViewOpen?: boolean;
 }
 
 export const DEFAULT_DEBOUNCE_TIME_MS = 600;
@@ -149,6 +150,9 @@ export function deriveConfigChangeEffect(
     }
     if (event.affectsConfiguration('searchEnhancement.precomputeSegments')) {
         effect.precomputeSegments = config.get<boolean>('precomputeSegments', true);
+    }
+    if (event.affectsConfiguration('searchEnhancement.warmTagsCacheOnViewOpen')) {
+        effect.warmTagsCacheOnViewOpen = config.get<boolean>('warmTagsCacheOnViewOpen', true);
     }
 
     return effect;

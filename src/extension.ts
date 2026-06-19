@@ -80,6 +80,7 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
         this.config.get<GroupByMode>("defaultGroupBy", 'name') === 'file' ? 'file' : 'name';
     private profileSearch = this.config.get<boolean>("profileSearch", false);
     private precomputeSegments = this.config.get<boolean>("precomputeSegments", true);
+    private warmTagsCacheOnViewOpen = this.config.get<boolean>("warmTagsCacheOnViewOpen", true);
 
     // mtime-based cache for parsed .tags files; saves re-reading large indexes
     // on every keystroke and stays correct across user-driven ctags re-runs.
@@ -91,6 +92,7 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
     );
 
     private pendingProfile: ProfileRecord | null = null;
+    private warmupGeneration = 0;
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -142,6 +144,9 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
         // Sync webview with current profile flag so it knows whether to time
         // renderResults and post a profileTiming reply.
         webviewView.webview.postMessage({ command: 'setProfileEnabled', enabled: this.profileSearch });
+        if (this.warmTagsCacheOnViewOpen) {
+            this.warmTagsCacheInBackground();
+        }
 
         // 監聽設定變更，讓 debounceTime 和 tagsFilePaths 即時生效
         vscode.workspace.onDidChangeConfiguration(event => {
@@ -149,12 +154,14 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                 event,
                 vscode.workspace.getConfiguration("searchEnhancement")
             );
+            let shouldWarmCache = false;
             if (effect.debounceTime !== undefined) {
                 this.debounceTime = effect.debounceTime;
                 webviewView.webview.postMessage({ command: 'updateDebounceTime', value: effect.debounceTime });
             }
             if (effect.tagsFilePaths !== undefined) {
                 this.tagsFilePathsConfig = effect.tagsFilePaths;
+                shouldWarmCache = true;
             }
             if (effect.profileSearch !== undefined) {
                 this.profileSearch = effect.profileSearch;
@@ -167,6 +174,22 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                 // checked on the next get() so this is safe even if the file
                 // hasn't actually changed on disk.
                 this.symbolsCache.clear();
+                shouldWarmCache = true;
+            }
+            if (effect.warmTagsCacheOnViewOpen !== undefined) {
+                this.warmTagsCacheOnViewOpen = effect.warmTagsCacheOnViewOpen;
+                if (effect.warmTagsCacheOnViewOpen) {
+                    shouldWarmCache = true;
+                } else {
+                    // Cancel ownership of any running warm-up and discard both
+                    // completed and in-flight cache entries. The next search is
+                    // therefore a genuine cold-cache run for A/B profiling.
+                    this.warmupGeneration += 1;
+                    this.symbolsCache.clear();
+                }
+            }
+            if (shouldWarmCache && this.warmTagsCacheOnViewOpen) {
+                this.warmTagsCacheInBackground();
             }
         });
 
@@ -399,6 +422,53 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
 
         this.tagsFilePathsConfig = decision.paths;
         return decision.paths;
+    }
+
+    private warmTagsCacheInBackground(): void {
+        const generation = ++this.warmupGeneration;
+
+        void (async () => {
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (!workspaceFolders) {
+                return;
+            }
+
+            const rootPath = workspaceFolders[0].uri.fsPath;
+            const tagsFilePathTemplates = await this.ensureTagsFilePathsInitialized(workspaceFolders[0].uri);
+            const tagsFilePaths = resolveTagsFilePaths(tagsFilePathTemplates, rootPath);
+            const existingTagsFiles = tagsFilePaths.filter(tagsFilePath => fs.existsSync(tagsFilePath));
+
+            if (generation !== this.warmupGeneration || existingTagsFiles.length === 0) {
+                return;
+            }
+
+            const profileWarmup = this.profileSearch;
+            const startedAt = profileWarmup ? performance.now() : 0;
+            const results = await Promise.all(
+                existingTagsFiles.map(tagsFilePath => this.symbolsCache.get(tagsFilePath))
+            );
+
+            if (generation !== this.warmupGeneration || !profileWarmup || !this.profileSearch) {
+                return;
+            }
+
+            const elapsedMs = performance.now() - startedAt;
+            const missCount = results.filter(result => !result.wasCached).length;
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            this.profileChannel.appendLine(`[${hh}:${mm}:${ss}] Tags warm-up`);
+            this.profileChannel.appendLine(
+                fmtLine('tags cache', elapsedMs, `(${existingTagsFiles.length} files, ${missCount} miss)`)
+            );
+            this.profileChannel.appendLine('');
+        })().catch(error => {
+            if (this.profileSearch) {
+                const message = error instanceof Error ? error.message : String(error);
+                this.profileChannel.appendLine(`Tags cache warm-up skipped: ${message}`);
+            }
+        });
     }
 
     public focusSearchInput() {

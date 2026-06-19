@@ -35,6 +35,46 @@ suite('Tags Cache', () => {
         assert.strictEqual(first.value, second.value, 'cached calls should return the same reference');
     });
 
+    test('coalesces concurrent first calls for the same path into one parse', async () => {
+        const file = path.join(tempDir, 'concurrent.tags');
+        fs.writeFileSync(file, 'foo\tconcurrent.c\t1\n', 'utf8');
+
+        let parseCount = 0;
+        let releaseParse: (() => void) | undefined;
+        let firstParseStarted: (() => void) | undefined;
+        const parseGate = new Promise<void>(resolve => {
+            releaseParse = resolve;
+        });
+        const firstParseStartedGate = new Promise<void>(resolve => {
+            firstParseStarted = resolve;
+        });
+        const parsedValue = ['parsed'];
+
+        const cache = createTagsCache<string[]>(async () => {
+            parseCount += 1;
+            if (parseCount === 1) {
+                firstParseStarted?.();
+            }
+            await parseGate;
+            return parsedValue;
+        });
+
+        const firstPromise = cache.get(file);
+        await firstParseStartedGate;
+        const secondPromise = cache.get(file);
+
+        await new Promise(resolve => setTimeout(resolve, 50));
+        releaseParse?.();
+        const [first, second] = await Promise.all([firstPromise, secondPromise]);
+
+        assert.strictEqual(parseCount, 1, 'concurrent misses should share one parser invocation');
+        assert.strictEqual(first.wasCached, false, 'the parser result is a miss');
+        assert.strictEqual(second.wasCached, false, 'the shared in-flight result is still a miss');
+        assert.strictEqual(first.value, parsedValue);
+        assert.strictEqual(second.value, parsedValue);
+        assert.strictEqual(first.value, second.value, 'both callers should receive the same parsed reference');
+    });
+
     test('reparses after the file mtime advances', async () => {
         const file = path.join(tempDir, 'b.tags');
         fs.writeFileSync(file, 'foo\tb.c\t1\n', 'utf8');

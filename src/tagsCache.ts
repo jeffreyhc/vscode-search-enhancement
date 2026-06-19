@@ -28,8 +28,15 @@ interface CacheEntry<T> {
     value: T;
 }
 
+interface PendingEntry<T> {
+    mtimeMs: number;
+    promise: Promise<CacheEntry<T>>;
+}
+
 export function createTagsCache<T>(parse: (filePath: string) => Promise<T>): TagsCache<T> {
     const cache = new Map<string, CacheEntry<T>>();
+    const pending = new Map<string, PendingEntry<T>>();
+    let version = 0;
 
     return {
         async get(filePath: string): Promise<TagsCacheResult<T>> {
@@ -38,15 +45,43 @@ export function createTagsCache<T>(parse: (filePath: string) => Promise<T>): Tag
             if (cached && cached.mtimeMs === stat.mtimeMs) {
                 return { value: cached.value, wasCached: true };
             }
-            const value = await parse(filePath);
-            cache.set(filePath, { mtimeMs: stat.mtimeMs, value });
-            return { value, wasCached: false };
+
+            const pendingEntry = pending.get(filePath);
+            if (pendingEntry && pendingEntry.mtimeMs === stat.mtimeMs) {
+                const entry = await pendingEntry.promise;
+                return { value: entry.value, wasCached: false };
+            }
+
+            const parseVersion = version;
+            const parsePromise = (async (): Promise<CacheEntry<T>> => {
+                const value = await parse(filePath);
+                const entry = { mtimeMs: stat.mtimeMs, value };
+                if (version === parseVersion) {
+                    cache.set(filePath, entry);
+                }
+                return entry;
+            })();
+            pending.set(filePath, { mtimeMs: stat.mtimeMs, promise: parsePromise });
+
+            try {
+                const entry = await parsePromise;
+                return { value: entry.value, wasCached: false };
+            } finally {
+                const currentPending = pending.get(filePath);
+                if (currentPending?.promise === parsePromise) {
+                    pending.delete(filePath);
+                }
+            }
         },
         invalidate(filePath: string): void {
+            version += 1;
             cache.delete(filePath);
+            pending.delete(filePath);
         },
         clear(): void {
+            version += 1;
             cache.clear();
+            pending.clear();
         },
         size(): number {
             return cache.size;

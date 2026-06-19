@@ -11,7 +11,9 @@
 
 在百萬行等級的 C/C++ codebase 裡，邊打字邊找到任何 function / variable / macro。多關鍵字搜尋，使用 [Universal Ctags](https://github.com/universal-ctags/ctags) 索引；專為 FreeRTOS、kernel、embedded 與 IntelliSense 跑不起來的 legacy 專案設計。
 
-> ⚡ **v0.5.0**：百萬 symbols 索引上加速 30× — warm cache 3 秒 → 100 毫秒。詳見 [CHANGELOG](CHANGELOG.md)。
+> ⚡ **v0.5.3**：搜尋面板開啟時就開始在背景解析 `.tags`。1.65M symbols 的索引在預熱完成後，搜尋約 62 毫秒，不必再等待約 9.9 秒的 cold parse；若面板開啟後立刻搜尋，仍需等待尚未完成的預熱。
+>
+> **v0.5.0**：百萬 symbols 索引上加速 30× — warm cache 3 秒 → 100 毫秒。詳見 [CHANGELOG](CHANGELOG.md)。
 
 ## Features
 
@@ -40,6 +42,7 @@ VS Code 內建的 symbol search 走當下作用中的 Language Server。對 C/C+
 - **不需要 build system。** ctags parse 得了就搜得到。不需要 `compile_commands.json`、不需要 LSP daemon、不需要 IntelliSense database。
 - **多關鍵字 AND 搜尋。** 打 `task create` 就能找到 `vTaskCreateStatic`、`xTaskCreatePinnedToCore` 等，順序無關。加底線像 `port_NVIC` 變成 phrase 比對。
 - **為大型 codebase 設計。** 百萬 symbols 規模 warm cache ~100 毫秒；每打一個字都不會卡 UI。
+- **輸入前先預熱。** 搜尋面板開啟時會在背景解析 `.tags`。若立刻搜尋，query 會共用進行中的 parse、避免重複工作，但仍需等待剩餘的預熱時間。
 - **包含 macros、typedef、ctags 認得的一切。** 包含很多 LSP 抓不到的 symbol。
 
 ## Installation
@@ -92,6 +95,7 @@ VS Code 內建的 symbol search 走當下作用中的 Language Server。對 C/C+
 | `defaultGroupBy` | `"name"` \| `"file"` | `"name"` | 搜尋面板開啟時的初始分組方式。可從面板右上角 More Actions (`...`) 選單即時切換，不需要 reload。 |
 | `precomputeSegments` | `boolean` | `true` | 在 parse `.tags` 時就把每個 symbol 的 lowercase + underscore-split segments 算好快取起來，搜尋時不重算。對大型 index 大約 3–30× 加速，代價約每 100 萬 symbols 多 50–100 MB 常駐記憶體。 |
 | `profileSearch` | `boolean` | `false` | 開啟後每次搜尋會把分階段耗時印到 **Search Enhancement** Output channel，用於診斷慢搜尋。一般使用建議關閉。 |
+| `warmTagsCacheOnViewOpen` | `boolean` | `true` | 搜尋面板開啟時在背景 parse 設定的 `.tags`。若預熱完成前就搜尋，仍需等待剩餘的 parse；關閉後會回到 cold-first-search 的舊機制。 |
 
 ### Tags 檔路徑
 
@@ -123,4 +127,6 @@ VS Code 內建的 symbol search 走當下作用中的 Language Server。對 C/C+
   end-to-end total        77.2ms
 ```
 
-VS Code 啟動後第一次搜尋（或 ctags 重跑後第一次）會付一次 `tags cache` 的 parse cost（與索引大小成正比）；之後的搜尋直接重用 parse 結果。
+要比較舊機制與背景預熱的成本，先開啟 `profileSearch`，把 `warmTagsCacheOnViewOpen` 設為 `false`，reload window 後搜尋一次。接著設為 `true`，再次 reload，等 `Tags warm-up` profile 區塊出現後搜尋同一組字串。兩組之間 reload 可避免前一組已解析的 cache 影響結果。
+
+若背景預熱已關閉或尚未完成，第一次搜尋會付一次 `tags cache` 的 parse cost（與索引大小成正比）；之後的搜尋直接重用 parse 結果。

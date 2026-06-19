@@ -78,6 +78,12 @@
           "scope": "window",
           "description": "Log per-stage timings for each search to the \"Search Enhancement\" output channel. For diagnosing slow searches; leave off in normal use."
         },
+        "searchEnhancement.warmTagsCacheOnViewOpen": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "description": "Parse configured .tags files in the background when the search view opens so the first search does not wait for parsing. Disable to profile the previous cold-first-search behavior."
+        },
         "searchEnhancement.precomputeSegments": {
           "type": "boolean",
           "default": true,

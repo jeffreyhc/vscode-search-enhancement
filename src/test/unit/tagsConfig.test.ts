@@ -318,4 +318,20 @@ suite('Config Change Effect', () => {
         );
         assert.deepStrictEqual(effect, { precomputeSegments: true });
     });
+
+    test('returns only warmTagsCacheOnViewOpen when only warm-up setting affected', () => {
+        const effect = deriveConfigChangeEffect(
+            makeEvent(['searchEnhancement.warmTagsCacheOnViewOpen']),
+            makeConfig({ warmTagsCacheOnViewOpen: false })
+        );
+        assert.deepStrictEqual(effect, { warmTagsCacheOnViewOpen: false });
+    });
+
+    test('warmTagsCacheOnViewOpen defaults to true when affected but not stored', () => {
+        const effect = deriveConfigChangeEffect(
+            makeEvent(['searchEnhancement.warmTagsCacheOnViewOpen']),
+            makeConfig({})
+        );
+        assert.deepStrictEqual(effect, { warmTagsCacheOnViewOpen: true });
+    });
 });
