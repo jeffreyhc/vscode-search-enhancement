@@ -70,6 +70,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `package.json` 的 `license` 改為 SPDX `MIT`
 - `.vscodeignore` 補上 `.claude/`、`.github/`、`out/test/`、`*.code-workspace`、`*.vsix`，避免內部 / CI / 測試檔被打包進 marketplace 上的 vsix
 
+### [0.5.3] - 2026-06-20
+#### Improve
+- 搜尋面板開啟時在背景預先解析 `.tags`，避免預熱完成後的第一次搜尋等待大型索引 parse；1.65M symbols 的實測從約 9.9 秒降至 62ms
+- 新增 `searchEnhancement.warmTagsCacheOnViewOpen` 設定，可關閉背景預熱以比較舊版 cold-first-search 行為
+- 背景預熱與搜尋同時遇到首次 cache miss 時共用同一個 in-flight parse，避免重複解析大型 `.tags`
+- `profileSearch` 新增 `Tags warm-up` 計時區塊，方便比較背景預熱成本與第一次搜尋延遲
+
 ### [0.5.2] - 2026-05-20
 #### Fix
 - 修 README badges 在 Marketplace 頁面顯示異常：

@@ -21,7 +21,7 @@
     "large codebase",
     "monorepo"
   ],
-  "version": "0.5.2",
+  "version": "0.5.3",
   "publisher": "jeffreyhc",
   "engines": {
     "vscode": "^1.96.0"
