@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { performance } from 'perf_hooks';
 import { normalizeSymbolSegments } from './searchMatcher';
 
 /** ctags 解析後的符號資料結構，可自行擴充 */
@@ -31,6 +32,22 @@ export interface GetSymbolsFromTagsOptions {
      * unit tests).
      */
     precomputeSegments?: boolean;
+    /** Receive phase timings for a real parse. Omit to keep profiling overhead at zero. */
+    onProfile?: (profile: TagsParseProfile) => void;
+}
+
+export interface TagsParseProfile {
+    tagsFilePath: string;
+    fileBytes: number;
+    lineCount: number;
+    symbolCount: number;
+    readMs: number;
+    splitLinesMs: number;
+    parseRowsMs: number;
+    precomputeSegmentsMs: number;
+    totalMs: number;
+    heapUsedBeforeBytes: number;
+    heapUsedAfterBytes: number;
 }
 
 /**
@@ -57,9 +74,17 @@ export async function getSymbolsFromTags(
     options: GetSymbolsFromTagsOptions = {}
 ): Promise<CtagsSymbol[]> {
     const precomputeSegments = options.precomputeSegments === true;
+    const profile = options.onProfile;
+    const fileBytes = profile ? fs.statSync(tagsFilePath).size : 0;
+    const heapUsedBeforeBytes = profile ? process.memoryUsage().heapUsed : 0;
+    const startedAt = profile ? performance.now() : 0;
     const content = fs.readFileSync(tagsFilePath, 'utf-8');
+    const readFinishedAt = profile ? performance.now() : 0;
     const lines = content.split(/\r?\n/);
+    const splitFinishedAt = profile ? performance.now() : 0;
     const symbols: CtagsSymbol[] = [];
+    const tagsDirectory = path.dirname(tagsFilePath);
+    const resolvedFilePaths = new Map<string, string>();
 
     for (const line of lines) {
         if (!line || line.startsWith('!')) {
@@ -105,9 +130,13 @@ export async function getSymbolsFromTags(
         // Non-numeric exCmd (regex pattern) → fall back to 1; will be
         // overridden below by a `line:N` extension field if present.
 
-        const absoluteFilePath = path.isAbsolute(filePath)
-            ? filePath
-            : path.join(path.dirname(tagsFilePath), filePath);
+        let absoluteFilePath = resolvedFilePaths.get(filePath);
+        if (absoluteFilePath === undefined) {
+            absoluteFilePath = path.isAbsolute(filePath)
+                ? filePath
+                : path.join(tagsDirectory, filePath);
+            resolvedFilePaths.set(filePath, absoluteFilePath);
+        }
 
         const symbol: CtagsSymbol = {
             name,
@@ -137,11 +166,35 @@ export async function getSymbolsFromTags(
             }
         }
 
-        if (precomputeSegments) {
+        if (precomputeSegments && !profile) {
             symbol.normalizedSegments = normalizeSymbolSegments(name);
         }
 
         symbols.push(symbol);
+    }
+
+    const parseFinishedAt = profile ? performance.now() : 0;
+    if (precomputeSegments && profile) {
+        for (const symbol of symbols) {
+            symbol.normalizedSegments = normalizeSymbolSegments(symbol.name);
+        }
+    }
+    const finishedAt = profile ? performance.now() : 0;
+
+    if (profile) {
+        profile({
+            tagsFilePath,
+            fileBytes,
+            lineCount: lines.length,
+            symbolCount: symbols.length,
+            readMs: readFinishedAt - startedAt,
+            splitLinesMs: splitFinishedAt - readFinishedAt,
+            parseRowsMs: parseFinishedAt - splitFinishedAt,
+            precomputeSegmentsMs: finishedAt - parseFinishedAt,
+            totalMs: finishedAt - startedAt,
+            heapUsedBeforeBytes,
+            heapUsedAfterBytes: process.memoryUsage().heapUsed
+        });
     }
 
     return symbols;

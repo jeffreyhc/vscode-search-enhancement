@@ -1,8 +1,9 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
+import { createRequire } from 'module';
 import * as os from 'os';
 import * as path from 'path';
-import { getSymbolsFromTags } from '../../tagsParser';
+import { TagsParseProfile, getSymbolsFromTags } from '../../tagsParser';
 
 suite('tagsParser', () => {
     let tempDir: string;
@@ -51,6 +52,39 @@ suite('tagsParser', () => {
         assert.strictEqual(symbols[2].file, path.join(tempDir, 'src', 'baz.ts'));
         assert.strictEqual(symbols[2].line, 1);
         assert.strictEqual(symbols[2].kind, 'v');
+    });
+
+    test('resolves each distinct relative source path once per parse', async () => {
+        const tagsFilePath = path.join(tempDir, '.tags');
+        const tagsContent = [
+            'first\tsrc/shared.c\t10;"\tf',
+            'second\tsrc/shared.c\t20;"\tv',
+            'third\tsrc/other.c\t30;"\td'
+        ].join('\n');
+        fs.writeFileSync(tagsFilePath, tagsContent, 'utf8');
+
+        const pathModule = createRequire(__filename)('path') as { join: typeof path.join };
+        const originalJoin = pathModule.join;
+        let parserJoinCalls = 0;
+        pathModule.join = ((...parts: string[]) => {
+            if (parts[0] === tempDir && parts[1]?.startsWith('src/')) {
+                parserJoinCalls += 1;
+            }
+            return originalJoin(...parts);
+        }) as typeof path.join;
+
+        try {
+            const symbols = await getSymbolsFromTags(tagsFilePath);
+
+            assert.strictEqual(parserJoinCalls, 2);
+            assert.deepStrictEqual(symbols, [
+                { name: 'first', file: originalJoin(tempDir, 'src/shared.c'), line: 10, kind: 'f' },
+                { name: 'second', file: originalJoin(tempDir, 'src/shared.c'), line: 20, kind: 'v' },
+                { name: 'third', file: originalJoin(tempDir, 'src/other.c'), line: 30, kind: 'd' }
+            ]);
+        } finally {
+            pathModule.join = originalJoin;
+        }
     });
 
     test('parses key:value extra fields from ctags extension columns', async () => {
@@ -198,5 +232,45 @@ suite('tagsParser', () => {
         // Explicit false
         const symbolsExplicit = await getSymbolsFromTags(tagsFilePath, { precomputeSegments: false });
         assert.strictEqual(symbolsExplicit[0].normalizedSegments, undefined);
+    });
+
+    test('reports parse phase timings and size metrics through onProfile', async () => {
+        const tagsFilePath = path.join(tempDir, '.tags');
+        const tagsContent = [
+            'vTaskCreate\tsrc/tasks.c\t10;"\tf',
+            'port_NVIC_INT\tsrc/port.c\t20;"\td'
+        ].join('\n');
+        fs.writeFileSync(tagsFilePath, tagsContent, 'utf8');
+
+        let callbackCount = 0;
+        let profile: TagsParseProfile | undefined;
+        const options = {
+            precomputeSegments: true,
+            onProfile: (value: TagsParseProfile) => {
+                callbackCount += 1;
+                profile = value;
+            }
+        };
+
+        const symbols = await getSymbolsFromTags(tagsFilePath, options);
+
+        assert.strictEqual(callbackCount, 1);
+        assert.ok(profile);
+        assert.strictEqual(profile.tagsFilePath, tagsFilePath);
+        assert.strictEqual(profile.fileBytes, Buffer.byteLength(tagsContent, 'utf8'));
+        assert.strictEqual(profile.lineCount, 2);
+        assert.strictEqual(profile.symbolCount, 2);
+        for (const duration of [
+            profile.readMs,
+            profile.splitLinesMs,
+            profile.parseRowsMs,
+            profile.precomputeSegmentsMs,
+            profile.totalMs
+        ]) {
+            assert.ok(duration >= 0, `expected non-negative duration, got ${duration}`);
+        }
+        assert.ok(profile.heapUsedBeforeBytes > 0);
+        assert.ok(profile.heapUsedAfterBytes > 0);
+        assert.deepStrictEqual(symbols[1].normalizedSegments, ['port', 'nvic', 'int']);
     });
 });

@@ -11,7 +11,7 @@
 
 在百萬行等級的 C/C++ codebase 裡，邊打字邊找到任何 function / variable / macro。多關鍵字搜尋，使用 [Universal Ctags](https://github.com/universal-ctags/ctags) 索引；專為 FreeRTOS、kernel、embedded 與 IntelliSense 跑不起來的 legacy 專案設計。
 
-> ⚡ **v0.5.3**：搜尋面板開啟時就開始在背景解析 `.tags`。1.65M symbols 的索引在預熱完成後，搜尋約 62 毫秒，不必再等待約 9.9 秒的 cold parse；若面板開啟後立刻搜尋，仍需等待尚未完成的預熱。
+> ⚡ **v0.6.0**：1.65M symbols 的 `.tags` cold parse 實測從約 11.1 秒降至 3.0 秒，parser heap growth 約減少 57%。搜尋面板仍會在背景預熱，完成後搜尋約 62 毫秒。
 >
 > **v0.5.0**：百萬 symbols 索引上加速 30× — warm cache 3 秒 → 100 毫秒。詳見 [CHANGELOG](CHANGELOG.md)。
 
@@ -110,7 +110,20 @@ VS Code 內建的 symbol search 走當下作用中的 Language Server。對 C/C+
 
 ### 診斷慢搜尋（`profileSearch`）
 
-開啟設定後，打開 `View` → `Output` 並從右側 channel 選單選 **Search Enhancement**。每次搜尋會印一段像這樣的內容：
+開啟設定後，打開 `View` → `Output` 並從右側 channel 選單選 **Search Enhancement**。首次 cache miss 時會先印出 parser 各階段耗時與 heap snapshot：
+
+```
+[00:55:05] Parse .tags "D:\project\.tags"
+  read file             737.8ms  (290.6 MiB)
+  split lines           113.2ms  (1652591 lines)
+  parse rows           1565.2ms  (1652526 symbols)
+  precompute segments   545.0ms
+  ---
+  parse total          2961.2ms
+  heap used snapshot              31.5 -> 777.9 MiB  (+746.5 MiB)
+```
+
+接著每次搜尋會印出像這樣的內容：
 
 ```
 [14:32:05] Search "port" partial=false groupBy=name

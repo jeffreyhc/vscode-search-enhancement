@@ -11,7 +11,7 @@
 
 Find any function, variable, or macro in million-line C/C++ codebases as fast as you can type. Multi-keyword search backed by [Universal Ctags](https://github.com/universal-ctags/ctags). Built for FreeRTOS, kernel, embedded, and legacy projects where IntelliSense is slow or unavailable.
 
-> ⚡ **v0.5.3**: `.tags` parsing now starts when the search view opens. On a 1.65M-symbol index, a search after warm-up completes in ~62 ms instead of waiting ~9.9 s for a cold parse. Searching immediately after opening the view may still wait for the remaining warm-up.
+> ⚡ **v0.6.0**: Cold `.tags` parsing now takes ~3.0 s on a 1.65M-symbol index, down from ~11.1 s, while parser heap growth drops by ~57%. The search view still starts parsing in the background, and searches after warm-up complete in ~62 ms.
 >
 > **v0.5.0**: 30× faster on million-symbol indexes — 3 s → 100 ms warm cache. See [CHANGELOG](CHANGELOG.md).
 
@@ -98,7 +98,20 @@ The default (`true`) is tuned for typical dev machines and large codebases — o
 
 ### Diagnosing slow searches (`profileSearch`)
 
-Enable the setting, then open `View` → `Output` and pick **Search Enhancement** from the channel picker on the right. Each search appends a block like:
+Enable the setting, then open `View` → `Output` and pick **Search Enhancement** from the channel picker on the right. On a cache miss, parser phases and a heap snapshot are logged before the search block:
+
+```
+[00:55:05] Parse .tags "D:\project\.tags"
+  read file             737.8ms  (290.6 MiB)
+  split lines           113.2ms  (1652591 lines)
+  parse rows           1565.2ms  (1652526 symbols)
+  precompute segments   545.0ms
+  ---
+  parse total          2961.2ms
+  heap used snapshot              31.5 -> 777.9 MiB  (+746.5 MiB)
+```
+
+Each search then appends a block like:
 
 ```
 [14:32:05] Search "port" partial=false groupBy=name

@@ -12,7 +12,7 @@ import {
     resolveTagsFilePaths
 } from './tagsConfig';
 import { createTagsCache } from './tagsCache';
-import { CtagsSymbol, getSymbolsFromTags } from './tagsParser';
+import { CtagsSymbol, TagsParseProfile, getSymbolsFromTags } from './tagsParser';
 
 export function activate(context: vscode.ExtensionContext) {
     // Dedicated channel for profile output; created once per activation. We do
@@ -88,7 +88,12 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
     // picks up the current flag on each miss; setting changes call clear()
     // to force a reparse with the new flag.
     private symbolsCache = createTagsCache<CtagsSymbol[]>(
-        (filePath) => getSymbolsFromTags(filePath, { precomputeSegments: this.precomputeSegments })
+        (filePath) => getSymbolsFromTags(filePath, {
+            precomputeSegments: this.precomputeSegments,
+            onProfile: this.profileSearch
+                ? profile => this.appendTagsParseProfile(profile)
+                : undefined
+        })
     );
 
     private pendingProfile: ProfileRecord | null = null;
@@ -469,6 +474,41 @@ class SearchFunctionsViewProvider implements vscode.WebviewViewProvider {
                 this.profileChannel.appendLine(`Tags cache warm-up skipped: ${message}`);
             }
         });
+    }
+
+    private appendTagsParseProfile(profile: TagsParseProfile): void {
+        if (!this.profileSearch) {
+            return;
+        }
+
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        const bytesPerMiB = 1024 * 1024;
+        const heapBeforeMiB = profile.heapUsedBeforeBytes / bytesPerMiB;
+        const heapAfterMiB = profile.heapUsedAfterBytes / bytesPerMiB;
+        const heapDeltaMiB = heapAfterMiB - heapBeforeMiB;
+        const heapValue = `${heapBeforeMiB.toFixed(1)} -> ${heapAfterMiB.toFixed(1)} MiB`.padStart(29);
+        const deltaPrefix = heapDeltaMiB >= 0 ? '+' : '';
+
+        this.profileChannel.appendLine(`[${hh}:${mm}:${ss}] Parse .tags "${profile.tagsFilePath}"`);
+        this.profileChannel.appendLine(
+            fmtLine('read file', profile.readMs, `(${(profile.fileBytes / bytesPerMiB).toFixed(1)} MiB)`)
+        );
+        this.profileChannel.appendLine(
+            fmtLine('split lines', profile.splitLinesMs, `(${profile.lineCount} lines)`)
+        );
+        this.profileChannel.appendLine(
+            fmtLine('parse rows', profile.parseRowsMs, `(${profile.symbolCount} symbols)`)
+        );
+        this.profileChannel.appendLine(fmtLine('precompute segments', profile.precomputeSegmentsMs));
+        this.profileChannel.appendLine('  ---');
+        this.profileChannel.appendLine(fmtLine('parse total', profile.totalMs));
+        this.profileChannel.appendLine(
+            `  ${'heap used snapshot'.padEnd(20)}${heapValue}  (${deltaPrefix}${heapDeltaMiB.toFixed(1)} MiB)`
+        );
+        this.profileChannel.appendLine('');
     }
 
     public focusSearchInput() {
