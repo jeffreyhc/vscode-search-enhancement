@@ -70,6 +70,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `package.json` 的 `license` 改為 SPDX `MIT`
 - `.vscodeignore` 補上 `.claude/`、`.github/`、`out/test/`、`*.code-workspace`、`*.vsix`，避免內部 / CI / 測試檔被打包進 marketplace 上的 vsix
 
+### [0.6.0] - 2026-06-21
+#### Improve
+- `.tags` parser 對重複的 source path 做 per-parse interning，避免每個 symbol 重複解析與配置相同的絕對路徑
+- 1.65M symbols 的三次 Extension Host 實測中位數：parse rows 從約 9.7 秒降至 1.7 秒（5.7× faster）、parse total 從約 11.1 秒降至 3.0 秒（降低 73%）、heap growth 從 1,736.7 MiB 降至 749.2 MiB（降低 57%）
+- `profileSearch` 新增 `.tags` parser 分階段計時，包含讀檔、切行、解析 rows、預先計算搜尋 segments，以及 parse 前後的 heap snapshot
+
 ### [0.5.3] - 2026-06-20
 #### Improve
 - 搜尋面板開啟時在背景預先解析 `.tags`，避免預熱完成後的第一次搜尋等待大型索引 parse；1.65M symbols 的實測從約 9.9 秒降至 62ms
